@@ -9,4 +9,3 @@ python-dateutil==2.7.5
 pytz==2018.7
 scipy==1.1.0
 six==1.12.0
--e git+git@github.com:welschma/TemplateFitter.git@bd250325f72270bb1dd3fd5b2d1a7affc2c2a584#egg=TemplateFitter
