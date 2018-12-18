@@ -25,6 +25,7 @@ def bin_width(bin_edges):
 
 class Template:
     def __init__(self, name, df, variable, nbins, limits, weight="weight"):
+
         self._name = name
         self._variable = variable
         self._weight = weight
@@ -40,12 +41,23 @@ class Template:
     def _create_template(self, df):
         """Calculates the template for a given pd.DataFrame.
 
+        Bin counts are calculated as the sum over all weights of
+        events in each bin. The squared bin errors are calculated
+        as sum over all weights squared.
+
         Parameters
         ----------
         df : pd.DataFrame
             A pd.DataFrame which contains input data used for templates.
             Has to have columns specified by the give variable and weight
             name.
+
+        Returns
+        -------
+        np.ndarray
+            Numpy array of shape (nbins,) filled with bin counts.
+        np.ndarray
+            Numpy array of shape (nbins,) filled with bin errors squared.
         """
         data = df[self._variable].values
         weights = df[self._weight].values
