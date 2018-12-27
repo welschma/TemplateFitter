@@ -4,6 +4,10 @@ import scipy.stats
 class HistogramError(Exception):
     pass
 
+#TODO deal with underflow and overflow bins
+#TODO deal with mathematical operation on histograms like scaling
+
+
 class Histogram:
 
     def __init__(self, nbins, limits, data=None, weights=None):

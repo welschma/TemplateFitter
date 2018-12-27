@@ -4,6 +4,7 @@ import numpy as np
 import scipy.stats
 
 from templatefitter import Histogram
+from templatefitter.histogram import HistogramError
 
 class HistogramTest(unittest.TestCase):
     
@@ -44,4 +45,10 @@ class HistogramTest(unittest.TestCase):
         np.testing.assert_equal(counts, true_counts)
         np.testing.assert_almost_equal(errors, np.sqrt(true_errors_sq))
 
+    def test_fill_error(self):
+        """Test if fill raises HistogramError if data and weights
+        have not the same length.
+        """
+        weights = self.weights[:-1]
+        self.assertRaises(HistogramError, self.hist.fill, self.data, weights)
 
