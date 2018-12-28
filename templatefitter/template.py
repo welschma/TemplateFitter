@@ -2,6 +2,7 @@
 Template class for a binned likelihood fit.
 """
 
+import collections
 import numpy as np
 
 from templatefitter import Histogram
@@ -13,13 +14,19 @@ class Template:
     Parameters
     ----------
     name : str
+        Template name.
     variable : str
+        Column name of the fit variable in the given pd.DataFrames.
     nbins : int
+        Number of bins for the histogram.
     limits : tuple of float
+        Lower and upper limit for the range of the histogram.
     df : pd.DataFrame, optional
+        DataFrame which holds the column specified by `variable` 
         (the default is None, which implies no initial addition
         of data).
     weight_key : str
+        Key of the column in `df` which holds the event weights 
         (the default is 'weight').
 
     Attributes
@@ -28,6 +35,7 @@ class Template:
     values
     errors
     rel_errors
+
     expected_yield
     """
 
@@ -133,6 +141,48 @@ class Template:
         return self._hist.bin_edges
 
 
+class TemplateCollection:
+    """TODO
 
+    Parameters
+    ----------
+
+    Attributes
+    ----------
+    """
+
+    def __init__(self, variable, nbins, limits, weight_key="weight"):
+        self._variable = variable
+        self._weight_key = weight_key
+        self._nbins = nbins
+        self._limits = limits
+
+        self._template_map = collections.OrderedDict()
+        
+    def add_template(self, name, df):
+        """Creates a template with labeled `name` from the given
+        pd.DataFrame. The templates are stored in an internal map.
+
+        Arguments
+        ---------
+        name : str
+            Name for the template and also the key in the internal
+            map storing the templates.
+        df : pd.DataFrame
+            A pd.DataFrame instance which has to contain at least a
+            column name `variable` (specified in the constructor).
+            If the DataFrame does not have a column identified by
+            `weight_key`, a weight of 1.0 is assigned to each event.
+
+        Returns
+        -------
+        None
+        """
+        self._template_map[name] = Template(
+            name, 
+            self._variable, 
+            self._nbins,
+            self._limits,
+            self._weight_key)
 
 
