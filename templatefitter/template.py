@@ -1,103 +1,104 @@
 """
 Template class for a binned likelihood fit.
 """
+
 import numpy as np
 
-
-class TemplateValueError(Exception):
-    pass
-
-
-def bin_centers(bin_edges):
-    """
-    Calculates the bin centers for given bin edges.
-    """
-    return (bin_edges[1:] + bin_edges[:-1]) / 2
-
-
-def bin_width(bin_edges):
-    """
-    Calculates the bin width for given bin edges assuming
-    equal binning.
-    """
-    return bin_edges[1] - bin_edges[0]
-
+from templatefitter import Histogram
 
 class Template:
-    def __init__(self, name, df, variable, nbins, limits, weight="weight"):
+    """
+    TODO
 
-        self._name = name
-        self._variable = variable
-        self._weight = weight
+    Parameters
+    ----------
+    name : str
+    variable : str
+    nbins : int
+    limits : tuple of float
+    df : pd.DataFrame, optional
+        (the default is None, which implies no initial addition
+        of data).
+    weight_key : str
+        (the default is 'weight').
 
-        self._nbins = nbins
-        self._limits = limits
-        self._bin_edges = np.linspace(*limits, nbins + 1)
+    Attributes
+    ----------
+    name
+    values
+    errors
+    expected_yield
+    """
 
-        self._template, self._template_error_sq = self._create_template(df)
+    def __init__(
+        self,
+        name,
+        variable,
+        nbins,
+        limits,
+        df=None,
+        weight_key="weight"
+        ):
 
-        self._mc_expectation = np.sum(self._template)
+       self._name = name
+       self._variable = variable
+       self._hist = Histogram(nbins, limits)
+       self._weight_key = weight_key
 
-    def _create_template(self, df):
-        """Calculates the template for a given pd.DataFrame.
+       if df is not None:
+           self.add_df(df)
 
-        Bin counts are calculated as the sum over all weights of
-        events in each bin. The squared bin errors are calculated
-        as sum over all weights squared.
+    def add_df(self, df):
+        """Fills template histogram with events from the given 
+        pd.DataFrame. The column of interest is given by the
+        variable attribute and the event weight is specified
+        by the weight_key attribute. If no column with name
+        weight_key is found, a weight of 1.0 is assigned to
+        each event.
 
-        Parameters
-        ----------
+        Arguments
+        ---------
         df : pd.DataFrame
-            A pd.DataFrame which contains input data used for templates.
-            Has to have columns specified by the give variable and weight
-            name.
-
+            A pd.DataFrame with events for this template.
+        
         Returns
         -------
-        np.ndarray
-            Numpy array of shape (nbins,) filled with bin counts.
-        np.ndarray
-            Numpy array of shape (nbins,) filled with bin errors squared.
+        None
         """
-        data = df[self._variable].values
-        weights = df[self._weight].values
+        data = df[self._variable]
+        
+        try:
+            weights = df[self._weight_key]
+        except KeyError:
+            weights = np.ones_like(data)
+        
+        self._hist.fill(data, weights)
+    
 
-        # subtract minus one to get array indices instead of bin numbers
-        bin_indices = np.digitize(data, self._bin_edges) - 1
-
-        bin_count = []
-        bin_error_sq = []
-        for bin_index in range(self._nbins + 1):
-            bin_count.append(np.sum(weights[np.where(bin_indices == bin_index)]))
-            bin_error_sq.append(np.sum(weights[np.where(bin_indices == bin_index)] ** 2))
-
-        return np.array(bin_count), np.array(bin_error_sq)
+    @property
+    def name(self):
+        return self._name
 
     @property
     def values(self):
-        return self._template
+        return self._hist.bin_counts
 
     @property
     def errors(self):
-        return np.sqrt(self._template_error_sq)
+        return self._hist.bin_errors
 
     @property
-    def rel_errors(self):
-        return np.divide(self.errors, self.values, out=np.full_like(self.errors, 1e-9), where=self.values != 0)
+    def expected_yield(self):
+        """Expected yield from the Template. This is weighted
+        sum of all bin_counts of the added Monte Carlo samples.
+
+        Returns
+        -------
+        float
+        """
+        return np.sum(self._hist.bin_counts)
 
 
-class TemplateCollection:
 
-    def __init__(self, variable, nbins, limits, weight="weight"):
-        self._variable = variable
-        self._weight = weight
-        self._nbins = nbins
-        self._limits = limits
 
-        self._template_map = dict()
 
-    def add_template(self, name, df):
-        self._template_map[name] = Template(name, df, self._variable, self._nbins, self._limits, self._weight)
-
-    def templates(self):
-        return self._template_map.items()

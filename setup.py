@@ -8,5 +8,5 @@ setup(
     packages=[
         "templatefitter"
     ],
-    description="Perform binnend log-likelhood fits using histogram templates as pdfs.",
+    description="Perform extended binnend log-likelhood fits using histogram templates as pdfs.",
 )
