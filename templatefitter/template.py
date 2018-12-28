@@ -27,6 +27,7 @@ class Template:
     name
     values
     errors
+    rel_errors
     expected_yield
     """
 
@@ -81,11 +82,40 @@ class Template:
 
     @property
     def values(self):
+        """Expected value of each bin of the template.
+
+        Returns
+        -------
+        np.ndarray
+            Shape (nbins,)
+        """
         return self._hist.bin_counts
 
     @property
     def errors(self):
+        """Expected error of each bin of the template.
+        This is the square root of the sum of squared event
+        weights.
+
+        Returns
+        -------
+        np.ndarray
+            Shape (nbins,)
+        """
         return self._hist.bin_errors
+    
+    @property
+    def rel_errors(self):
+        """Expected relative error of each bin of the template.
+        This is the square root of the sum of squared event
+        weights in each bin divided by each bin count.
+
+        Returns
+        -------
+        np.ndarray
+            Shape (nbins,)
+        """
+        return self._hist.bin_errors/self._hist.bin_counts
 
     @property
     def expected_yield(self):
@@ -97,6 +127,10 @@ class Template:
         float
         """
         return np.sum(self._hist.bin_counts)
+
+    @property
+    def bin_edges(self):
+        return self._hist.bin_edges
 
 
 

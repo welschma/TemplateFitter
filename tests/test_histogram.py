@@ -6,7 +6,7 @@ import scipy.stats
 from templatefitter import Histogram
 from templatefitter.histogram import HistogramError
 
-class HistogramTest(unittest.TestCase):
+class TestHistogram(unittest.TestCase):
     
     def setUp(self):
         self.data = np.array([1, 1, 2, 5, 7])
