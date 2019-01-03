@@ -18,9 +18,6 @@ class PoissonNLL:
         A TemplateCollection instance. The templates are used to
         extract the contribution from each process described by 
         the templates to the measured data set.
-
-    Attributes
-    ---------- 
     """
 
     def __init__(self, data, templates):
@@ -36,7 +33,7 @@ class PoissonNLL:
         Returns
         -------
         np.ndarray
-            An 2D array of shape (n_templates, n_bins)
+            A 2D array of shape (n_templates, n_bins)
         """
         values = self._templates.values
         return values/np.sum(values, axis=1).reshape(-1, 1)
@@ -44,8 +41,13 @@ class PoissonNLL:
 
     def __call__(self, x):
         """This function is called by the minimize method.
-        x is an 1-D array with shape (n,). These are the parameters
+        `x` is an 1-D array with shape (n,). These are the parameters
         which are fitted.
+
+        Returns
+        -------
+        float
+            The value of the negative log likelihood at `x`.
         """
         poi = x
         exp_evts_per_bin = np.matmul(poi, self.fraction_matrix())

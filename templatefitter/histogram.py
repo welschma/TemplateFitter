@@ -26,16 +26,26 @@ class Histogram:
 
     Attributes
     ----------
-    nbins
-    bin_eges
-    bin_width
-    bin_mids
-    bin_counts
-    bin_entries
-    bin_errors
-    limits
-    lower_limit
-    upper_limit
+    nbins : int
+        Number of bins in the histogram.
+    bin_edges :  np.ndarray
+        Bin edges of the histogram. Shape (nbins + 1,).
+    bin_width : float
+        Bin width of the histogram. 
+    bin_mids : np.ndarray
+        Bin mids of the histogram.
+    bin_counts : np.ndarray
+        Current bin counts in each bin.
+    bin_entries : np.ndarray
+        Current bin entries in each bin.
+    bin_errors : np.ndarray
+        Current bin errors in each bin.
+    limits : tuple of float
+        Lower and upper limit of the histogram range.
+    lower_limit : float
+        Lower  limit of the histogram range.
+    upper_limit : float
+        Upper  limit of the histogram range.
     """
 
     def __init__(self, nbins, limits, data=None, weights=None):
@@ -104,10 +114,6 @@ class Histogram:
         ---------
         c : float
             Multiplicative constant value.
-
-        Returns
-        -------
-        None
         """
         self._bin_counts *= c
         self._bin_errors_sq *= c**2
@@ -115,108 +121,43 @@ class Histogram:
     
     @property
     def nbins(self):
-        """Number of bins in the histogram.
-
-        Returns
-        -------
-        int
-        """
         return self._nbins
 
     @property
     def bin_edges(self):
-        """Bin edges of the histogram.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins + 1,)
-        """
         return self._bin_edges
 
     @property
     def bin_width(self):
-        """Bin width of the histogram.
-
-        Returns
-        -------
-        float
-        """
         return self.bin_edges[1] - self.bin_edges[0]
 
     @property
     def bin_mids(self):
-        """Bin mids of the histogram.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins,)
-        """
         edges = self.bin_edges
         return (edges[:-1 + edges[1:]])/2.
 
     @property
     def bin_counts(self):
-        """Current bin counts in each bin.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins,)
-        """
         return self._bin_counts
 
     @property
     def bin_entries(self):
-        """Current bin entries in each bin.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins,)
-        """
         return self._bin_entries
 
     @property
     def bin_errors(self):
-        """Current bin errors in each bin.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins,)
-        """
         return np.sqrt(self._bin_errors_sq)
 
     @property
     def limits(self):
-        """Lower and upper limit of the histogram range.
-
-        Returns
-        -------
-        tuple of float
-        """
         return self._limits
 
     @property
     def lower_limit(self):
-        """Lower  limit of the histogram range.
-
-        Returns
-        -------
-        float
-        """
         return self._limits[0]
 
     @property
     def upper_limit(self):
-        """Upper  limit of the histogram range.
-
-        Returns
-        -------
-        float
-        """
         return self._limits[1]
 
     def __str__(self):

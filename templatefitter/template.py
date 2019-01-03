@@ -32,11 +32,23 @@ class Template:
 
     Attributes
     ----------
-    name
-    values
-    errors
-    rel_errors
-    expected_yield
+    name : str
+    values : np.ndarray
+        Expected value of each bin of the template. Shape (nbins,).
+    errors : np.ndarray
+        Expected error of each bin of the template.
+        This is the square root of the sum of squared event
+        weights. Shape (nbins,).
+    rel_errors : np.ndarray
+        Expected relative error of each bin of the template.
+        This is the square root of the sum of squared event
+        weights in each bin divided by each bin count. Shape 
+        (nbins,).
+    expected_yield : float
+        Expected yield from the Template. This is weighted
+        sum of all bin_counts of the added Monte Carlo samples.
+    bin_edges : np.ndarray
+        Bin edges of the underlying histogram. Shape (nbins + 1,).
     """
 
     def __init__(
@@ -71,10 +83,6 @@ class Template:
         ---------
         df : pd.DataFrame
             A pd.DataFrame with events for this template.
-        
-        Returns
-        -------
-        None
         """
         data = df[self._variable]
         
@@ -91,50 +99,18 @@ class Template:
 
     @property
     def values(self):
-        """Expected value of each bin of the template.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins,)
-        """
         return self._hist.bin_counts
 
     @property
     def errors(self):
-        """Expected error of each bin of the template.
-        This is the square root of the sum of squared event
-        weights.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins,)
-        """
         return self._hist.bin_errors
     
     @property
     def rel_errors(self):
-        """Expected relative error of each bin of the template.
-        This is the square root of the sum of squared event
-        weights in each bin divided by each bin count.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins,)
-        """
         return self._hist.bin_errors/self._hist.bin_counts
 
     @property
     def expected_yield(self):
-        """Expected yield from the Template. This is weighted
-        sum of all bin_counts of the added Monte Carlo samples.
-
-        Returns
-        -------
-        float
-        """
         return np.sum(self._hist.bin_counts)
 
     @expected_yield.setter
@@ -144,13 +120,6 @@ class Template:
 
     @property
     def bin_edges(self):
-        """Bin edges of the underlying histogram.
-
-        Returns
-        -------
-        np.ndarray
-            Shape (nbins + 1,)
-        """
         return self._hist.bin_edges
 
 
@@ -175,10 +144,21 @@ class TemplateCollection:
 
     Attributes
     ----------
-    variable
-    bin_edges
-    values
-    rel_errors
+    variable : str
+        Name of the variable which is used to create the 
+        Templates.
+    bin_edges : np.ndarray
+        The bin edges of the created Templates. Shape is (nbins +1,).
+    values : np.ndarray
+        Matrix of bin counts of the stored templates. Shape is 
+        (number of templates, nbins). The first row corresponds
+        to the first added template, the second row to the second
+        added template and so on.
+    rel_errors : np.ndarray
+        Matrix of relative bin errors of the stored templates. Shape
+        is (number of templates, nbins). The first row corresponds
+        to the first added template, the second row to the second
+        added template and so on.
     """
 
     def __init__(self, variable, nbins, limits, weight_key="weight"):
@@ -190,7 +170,7 @@ class TemplateCollection:
         self._template_map = collections.OrderedDict()
         
     def add_template(self, name, df):
-        """Creates a template with labeled `name` from the given
+        """Creates a template labeled `name` from the given
         pd.DataFrame. The templates are stored in an internal map.
 
         Arguments
@@ -203,10 +183,6 @@ class TemplateCollection:
             column name `variable` (specified in the constructor).
             If the DataFrame does not have a column identified by
             `weight_key`, a weight of 1.0 is assigned to each event.
-
-        Returns
-        -------
-        None
         """
         self._template_map[name] = Template(
             name, 
@@ -218,48 +194,16 @@ class TemplateCollection:
     
     @property
     def variable(self):
-        """Name of the variable which is used to create the 
-        Templates
-
-        Returns
-        -------
-        str
-        """
         return self._variable
 
     @property
     def bin_edges(self):
-        """The bin edges of the created Templates.
-
-        Returns
-        -------
-        np.ndarray
-            Shape is (nbins +1,)
-        """
         return self._bin_edges
 
     @property
     def values(self):
-        """Matrix of bin counts of the stored templates.
-
-        Returns
-        -------
-        np.ndarray
-            Shape is (number of templates, nbins). The first row
-            corresponds to the first added template, the second
-            row to the second added template and so on.
-        """
         return np.array([template.values for template in self._template_map.values()])
 
     @property
     def rel_errors(self):
-        """Matrix of relative bin errors of the stored templates.
-
-        Returns
-        -------
-        np.ndarray
-            Shape is (number of templates, nbins). The first row
-            corresponds to the first added template, the second
-            row to the second added template and so on.
-        """
         return np.array([template.rel_errors for template in self._template_map.values()])
