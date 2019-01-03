@@ -9,8 +9,8 @@ from templatefitter import Histogram
 
 #TODO add covariance matrices to templates
 class Template:
-    """
-    TODO
+    """Template provides attributes and methods to compute a
+    binned likelihood function based on a Poisson model for each bin.
 
     Parameters
     ----------
@@ -144,18 +144,41 @@ class Template:
 
     @property
     def bin_edges(self):
+        """Bin edges of the underlying histogram.
+
+        Returns
+        -------
+        np.ndarray
+            Shape (nbins + 1,)
+        """
         return self._hist.bin_edges
 
 
 class TemplateCollection:
-    """TODO
+    """TemplateCollection is a container that creates and
+    stores Template instances and acts as an interface to
+    other classes or functions.
 
     Parameters
     ----------
+    variable : str
+        Column name of the fit variable in the pd.DataFrames to
+        be used for the Template creation.
+    nbins : int
+        Number of bins for the Template histogram.
+    limits : tuple of float
+        Lower and upper limit for the range of the histogram.
+    weight_key : str
+        Key of the column in pd.DataFrames which holds the event
+        weights (the default is 'weight').
+
 
     Attributes
     ----------
     variable
+    bin_edges
+    values
+    rel_errors
     """
 
     def __init__(self, variable, nbins, limits, weight_key="weight"):
@@ -195,16 +218,48 @@ class TemplateCollection:
     
     @property
     def variable(self):
+        """Name of the variable which is used to create the 
+        Templates
+
+        Returns
+        -------
+        str
+        """
         return self._variable
 
     @property
     def bin_edges(self):
+        """The bin edges of the created Templates.
+
+        Returns
+        -------
+        np.ndarray
+            Shape is (nbins +1,)
+        """
         return self._bin_edges
 
     @property
     def values(self):
+        """Matrix of bin counts of the stored templates.
+
+        Returns
+        -------
+        np.ndarray
+            Shape is (number of templates, nbins). The first row
+            corresponds to the first added template, the second
+            row to the second added template and so on.
+        """
         return np.array([template.values for template in self._template_map.values()])
 
     @property
     def rel_errors(self):
+        """Matrix of relative bin errors of the stored templates.
+
+        Returns
+        -------
+        np.ndarray
+            Shape is (number of templates, nbins). The first row
+            corresponds to the first added template, the second
+            row to the second added template and so on.
+        """
         return np.array([template.rel_errors for template in self._template_map.values()])
