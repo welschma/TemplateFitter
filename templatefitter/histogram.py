@@ -73,24 +73,24 @@ class Histogram:
             weights = np.ones_like(data)
 
         self._bin_counts += scipy.stats.binned_statistic(
-            x=data, 
-            values = weights,
+            x=data,
+            values=weights,
             statistic="sum",
-            bins= self._bin_edges
+            bins=self._bin_edges
             )[0]
 
         self._bin_entries += scipy.stats.binned_statistic(
-            x=data, 
-            values = weights,
+            x=data,
+            values=weights,
             statistic="count",
-            bins= self._bin_edges
+            bins=self._bin_edges
             )[0]
 
         self._bin_errors_sq += scipy.stats.binned_statistic(
-            x=data, 
-            values = weights**2,
+            x=data,
+            values=weights**2,
             statistic="sum",
-            bins= self._bin_edges
+            bins=self._bin_edges
             )[0]
 
     def scale(self, c):
