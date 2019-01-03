@@ -51,5 +51,5 @@ class PoissonNLL:
         exp_evts_per_bin = np.matmul(poi, self.fraction_matrix())
 
         return np.sum(exp_evts_per_bin - np.matmul(
-            np.log(exp_evts_per_bin, self._data.reshape(-1, 1)))
+            np.log(exp_evts_per_bin), self._data.reshape(-1, 1))
             )

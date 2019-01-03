@@ -36,7 +36,6 @@ class Template:
     values
     errors
     rel_errors
-
     expected_yield
     """
 
