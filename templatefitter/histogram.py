@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats
 
+
 class HistogramError(Exception):
     pass
 
@@ -14,6 +15,7 @@ class Histogram:
     ----------
     nbins : int
         Number of bins in the histogram.
+    
     limits : Tuple[float, float]
         Lower and upper limit of the range to histogram.
     data : np.array, optional
@@ -21,7 +23,7 @@ class Histogram:
     weights: np.array, optional
         Weights for each entry in the histogram. If none are
         given, a weight of 1. will be assigned to each event.
-    
+
     Attributes
     ----------
     nbins
@@ -43,12 +45,12 @@ class Histogram:
             self.lower_limit, self.upper_limit, nbins+1
             )
         self._bin_counts = np.zeros(nbins)
-        self._bin_entries= np.zeros(nbins)
+        self._bin_entries = np.zeros(nbins)
         self._bin_errors_sq = np.zeros(nbins)
-        
+
         if data is not None:
             self.fill(data, weights)
-    
+
     def fill(self, data, weights=None):
         """Fills the histogram with given data. If no weights are
         given, each data point is weighted with 1.0.
