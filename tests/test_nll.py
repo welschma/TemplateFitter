@@ -7,31 +7,6 @@ import scipy.stats
 
 from templatefitter import Template, TemplateCollection, PoissonNLL
 
-class TestTemplate(unittest.TestCase):
-
-    def setUp(self):
-        self.df = pd.DataFrame({
-            "x": [1, 1, 2, 5, 7],
-            "weight": [1.0, 1.0, 2.0, 1.5, 3.0]
-        })
-
-class TestTemplateCollection(unittest.TestCase):
-
-    def setUp(self):
-        self.sig_df = pd.DataFrame({
-            "x": [1, 1, 2, 5, 7],
-            "weight": [1.0, 1.0, 2.0, 1.5, 3.0]
-        })
-        
-        self.bkg_df = pd.DataFrame({
-            "x": [1, 1, 3, 3, 2, 4, 4, 5, 5, 7],
-            "weight": [1.0, 1.0, 1.5, 2.0, 2.0, 1.0, 2.0, 2.5, 1.5, 3.0]
-        })
-
-        self.tc = TemplateCollection("x", 2, (1., 7.))
-        self.tc.add_template("sig", self.sig_df)
-        self.tc.add_template("bkg", self.bkg_df)
-
 class TestPoissonNLL(unittest.TestCase):
 
     def setUp(self):
