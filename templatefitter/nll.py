@@ -7,7 +7,14 @@ import numpy as np
 
 
 class PoissonNLL:
-    """PoissonNLL
+    """A negative log likelihood (NLL) function for binned data using
+    template histograms shapes as pdfs. The NLL is calculated as
+    :math:`-\log(L) = \sum\limits_i^{n_{\mathrm{bins}}} \\nu_i - n_i \log(\\nu_i)`,
+
+    with:
+    
+    * :math:`\\nu_i` - expected number of events in bin :math:`i`
+    * :math:`n_i` - measured number of events in bin :math:`i`
 
     Parameters
     ----------

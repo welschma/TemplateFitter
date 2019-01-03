@@ -19,6 +19,8 @@ TemplateCollection
 
 Likelihood Functions
 --------------------
+Default Binned Negative Log Likelihood
+######################################
 .. autoclass:: templatefitter.PoissonNLL
     :members:
     :special-members: __call__
