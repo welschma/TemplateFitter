@@ -73,6 +73,25 @@ class TestTemplateCollection(unittest.TestCase):
         self.tc = TemplateCollection("x", 2, (1., 7.))
         self.tc.add_template("sig", self.sig_df)
         self.tc.add_template("bkg", self.bkg_df)
+    
+    def test_yields(self):
+
+        expected_yields = np.array([
+            np.sum(self.sig_df["weight"]),
+            np.sum(self.bkg_df["weight"])
+            ])
+
+        np.testing.assert_array_equal(self.tc.yields, expected_yields)
+
+    @unittest.skip("Skip test_generate_toy_data (takes a lot of time).")
+    def test_generate_toy_data(self):
+        generator_yields = np.sum(self.tc.values, axis=0)
+        toy_data_samples = np.array([self.tc.generate_toy_data() for _ in range(100000)])
+        np.testing.assert_array_almost_equal(
+            np.mean(toy_data_samples, axis=0),
+            generator_yields,
+            decimal=1
+        )
 
     def test_value_matrix(self):
 
@@ -103,5 +122,5 @@ class TestTemplateCollection(unittest.TestCase):
         expected_values = np.array(
             [np.sqrt(sig_errors)/sig_counts,
             np.sqrt(bkg_errors)/bkg_counts])
-            
+
         np.testing.assert_array_equal(self.tc.rel_errors, expected_values)

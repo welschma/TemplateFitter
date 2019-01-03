@@ -5,6 +5,8 @@ Template class for a binned likelihood fit.
 import collections
 import numpy as np
 
+from scipy.stats import poisson
+
 from templatefitter import Histogram
 
 #TODO add covariance matrices to templates
@@ -154,6 +156,8 @@ class TemplateCollection:
         (number of templates, nbins). The first row corresponds
         to the first added template, the second row to the second
         added template and so on.
+    yields : np.ndarray
+        Expected number of events per template. Shape is (num templates,).
     rel_errors : np.ndarray
         Matrix of relative bin errors of the stored templates. Shape
         is (number of templates, nbins). The first row corresponds
@@ -192,6 +196,24 @@ class TemplateCollection:
             df,
             self._weight_key)
     
+    def generate_toy_data(self):
+        """Generates toy data using the poisson distribution.
+        For each bin, a random number following a poisson distribution
+        with mean equal to the expected number of events in this bin
+        is generated.
+
+        Returns
+        -------
+        np.ndarray
+            Toy dataset. Shape is (nbins,)
+        """
+        expected_evts_per_bin = np.sum(self.values, axis=0)
+        return poisson.rvs(expected_evts_per_bin)
+
+    @property
+    def yields(self):
+        return np.sum(self.values, axis=1).reshape(-1)
+
     @property
     def variable(self):
         return self._variable
