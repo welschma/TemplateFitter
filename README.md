@@ -1,5 +1,13 @@
 # TemplateFitter
 
+## Installation
+
+```
+git clone https://github.com/welschma/TemplateFitter
+cd TemplateFitter
+pip3 install -e .
+```
+
 ## TODO
 
 - [x] Histogram
