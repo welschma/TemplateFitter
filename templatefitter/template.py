@@ -7,6 +7,7 @@ import numpy as np
 
 from templatefitter import Histogram
 
+#TODO add covariance matrices to templates
 class Template:
     """
     TODO
@@ -54,6 +55,8 @@ class Template:
        self._hist = Histogram(nbins, limits)
        self._weight_key = weight_key
 
+       self._cov_mats = None
+
        if df is not None:
            self.add_df(df)
 
@@ -82,7 +85,6 @@ class Template:
             weights = np.ones_like(data)
         
         self._hist.fill(data, weights)
-    
 
     @property
     def name(self):
@@ -136,6 +138,11 @@ class Template:
         """
         return np.sum(self._hist.bin_counts)
 
+    @expected_yield.setter
+    def expected_yield(self, new_yield):
+        scale_factor = new_yield/self.expected_yield
+        self._hist.scale(scale_factor)
+
     @property
     def bin_edges(self):
         return self._hist.bin_edges
@@ -149,6 +156,7 @@ class TemplateCollection:
 
     Attributes
     ----------
+    variable
     """
 
     def __init__(self, variable, nbins, limits, weight_key="weight"):
@@ -156,7 +164,7 @@ class TemplateCollection:
         self._weight_key = weight_key
         self._nbins = nbins
         self._limits = limits
-
+        self._bin_edges = np.linspace(*limits, nbins+1)
         self._template_map = collections.OrderedDict()
         
     def add_template(self, name, df):
@@ -183,6 +191,21 @@ class TemplateCollection:
             self._variable, 
             self._nbins,
             self._limits,
+            df,
             self._weight_key)
+    
+    @property
+    def variable(self):
+        return self._variable
 
+    @property
+    def bin_edges(self):
+        return self._bin_edges
 
+    @property
+    def values(self):
+        return np.array([template.values for template in self._template_map.values()])
+
+    @property
+    def rel_errors(self):
+        return np.array([template.rel_errors for template in self._template_map.values()])
