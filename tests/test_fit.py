@@ -48,3 +48,35 @@ class TestPoissonNLL(unittest.TestCase):
             result.x[1] - 3*np.sqrt(result.covariance[1,1]) < self.tc.yields[1] < 
             result.x[1] + 3*np.sqrt(result.covariance[1,1])
         ) 
+
+# class TestToyStudy(unittest.TestCase):
+
+#     def setUp(self):
+#         nsig = 1000
+#         self.sig_df = pd.DataFrame({
+#             "x": np.random.randn(nsig)*4+125,
+#             "weight": np.random.randn(nsig)*1e-2 + 1 
+#         })
+        
+#         nbkg=50000
+#         self.bkg_df = pd.DataFrame({
+#             "x": np.random.exponential(scale=10, size=nbkg) + 100,
+#             "weight": np.random.randn(nbkg)*1e-2 + 1.1 
+#         })
+
+
+#         self.tc = TemplateCollection("x", 100, (110., 130.))
+#         self.tc.add_template("sig", self.sig_df)
+#         self.tc.add_template("bkg", self.bkg_df)
+
+#     def test_do_experiments(self):
+#         toys = ToyStudy(self.tc, PoissonNLL)
+#         toys.do_experiments(1000)
+#         print(toys._templates.yields)
+#         print(toys.result_parameters)
+#         print(toys.result_uncertainties)
+#         pulls = toys.get_toy_result_pulls(0)
+#         print(pulls)
+#         plt.hist(pulls, bins=50)
+#         plt.show()
+
