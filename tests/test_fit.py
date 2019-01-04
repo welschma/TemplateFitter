@@ -38,3 +38,13 @@ class TestPoissonNLL(unittest.TestCase):
     def test_fit(self):
         lf = LikelihoodFitter(self.nll)
         result = lf.minimize()
+
+        self.assertTrue(
+            result.x[0] - 3*np.sqrt(result.covariance[0,0]) < self.tc.yields[0] < 
+            result.x[0] + 3*np.sqrt(result.covariance[0,0])
+        ) 
+
+        self.assertTrue(
+            result.x[1] - 3*np.sqrt(result.covariance[1,1]) < self.tc.yields[1] < 
+            result.x[1] + 3*np.sqrt(result.covariance[1,1])
+        ) 
