@@ -74,6 +74,10 @@ class TestTemplateCollection(unittest.TestCase):
         self.tc.add_template("sig", self.sig_df)
         self.tc.add_template("bkg", self.bkg_df)
     
+    def test_set_yields(self):
+        self.tc.set_yields(sig=1000, bkg=5000)
+        np.testing.assert_array_equal(self.tc.yields, np.array([1000, 5000]))
+
     def test_yields(self):
 
         expected_yields = np.array([

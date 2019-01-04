@@ -195,6 +195,19 @@ class TemplateCollection:
             self._limits,
             df,
             self._weight_key)
+
+    def set_yields(self, **kwargs):
+        """Set expected number of events of stored templates to a
+        new value. Arguments are passes as kwargs where the key has
+        to match a name of a template in the collection.
+
+        Arguments
+        ---------
+        kwargs
+            E.g. signal=100, background=5000.
+        """
+        for key, val in kwargs.items():
+            self._template_map[key].expected_yield = val
     
     def generate_toy_data(self):
         """Generates toy data using the poisson distribution.
@@ -221,6 +234,10 @@ class TemplateCollection:
     @property
     def bin_edges(self):
         return self._bin_edges
+
+    @property
+    def bin_mids(self):
+        return (self.bin_edges[:-1] + self.bin_edges[1:])/2
 
     @property
     def values(self):
