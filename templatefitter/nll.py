@@ -18,20 +18,16 @@ class PoissonNLL:
 
     Parameters
     ----------
-    data : pd.DataFrame
-        A pd.DataFrame instance storing the data to be fitted
-        to the templates.
+    data : np.ndarray
+        Bin counts of the data histogram. Shape is (nbins,).
     templates : TemplateCollection
         A TemplateCollection instance. The templates are used to
         extract the contribution from each process described by 
         the templates to the measured data set.
     """
 
-    def __init__(self, data, templates):
-        self._data = np.histogram(
-            data[templates.variable],
-            bins=templates.bin_edges
-        )[0]
+    def __init__(self, hdata, templates):
+        self._data = hdata
         self._templates = templates
 
     def fraction_matrix(self):

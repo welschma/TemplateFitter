@@ -28,12 +28,14 @@ class TestPoissonNLL(unittest.TestCase):
         self.tc.add_template("sig", self.sig_df)
         self.tc.add_template("bkg", self.bkg_df)
 
+        self.hdata = np.histogram(self.data.x, bins=self.tc.bin_edges)[0]
+
         self.sig_temp = Template("sig", "x", 2, (1., 7.), self.sig_df)
         self.bkg_temp = Template("bkg", "x", 2, (1., 7.), self.bkg_df)
     
     def test_fraction_matrix(self):
 
-        nll = PoissonNLL(self.data, self.tc)
+        nll = PoissonNLL(self.hdata, self.tc)
 
         exp_fractions = np.array([
             self.sig_temp.values/np.sum(self.sig_temp.values),
@@ -44,9 +46,7 @@ class TestPoissonNLL(unittest.TestCase):
 
     def test_call(self):
 
-        nll = PoissonNLL(self.data, self.tc)
-
-        hdata = np.histogram(self.data.x, bins=self.tc.bin_edges)[0]
+        nll = PoissonNLL(self.hdata, self.tc)
 
         test_fractions = np.array([
             self.sig_temp.values/np.sum(self.sig_temp.values),
