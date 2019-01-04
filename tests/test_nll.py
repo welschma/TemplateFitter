@@ -56,9 +56,9 @@ class TestPoissonNLL(unittest.TestCase):
         np.testing.assert_array_equal(nll.fraction_matrix(), test_fractions)
         
         test_params = np.array([4,5])
-        test_evts_per_bin = np.matmul(test_params, test_fractions)
-        test_nll = np.sum(test_evts_per_bin - np.matmul(
-            np.log(test_evts_per_bin), hdata.reshape(-1,1))
-        ) 
+        test_evts_per_bin = test_params@test_fractions
+        test_nll = np.sum(
+            test_evts_per_bin - np.log(test_evts_per_bin)*self.hdata
+        )
         
         np.testing.assert_array_equal(nll(test_params), test_nll)

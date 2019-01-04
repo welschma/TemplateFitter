@@ -41,6 +41,9 @@ class PoissonNLL:
         values = self._templates.values
         return values/np.sum(values, axis=1).reshape(-1, 1)
 
+    @property
+    def x0(self):
+        return self._templates.yields
 
     def __call__(self, x):
         """This function is called by the minimize method.
@@ -53,8 +56,5 @@ class PoissonNLL:
             The value of the negative log likelihood at `x`.
         """
         poi = x
-        exp_evts_per_bin = np.matmul(poi, self.fraction_matrix())
-
-        return np.sum(exp_evts_per_bin - np.matmul(
-            np.log(exp_evts_per_bin), self._data.reshape(-1, 1))
-            )
+        exp_evts_per_bin = poi@self.fraction_matrix()
+        return np.sum(exp_evts_per_bin - self._data*np.log(exp_evts_per_bin))
