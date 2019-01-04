@@ -119,7 +119,9 @@ class ToyStudy:
     def get_toy_result_pulls(self, param_index):
         """Returns pulls of the results from the toy Monte Carlo
         study. The pull is defined as
+
         :math:`p=\\frac{\\nu^{\mathrm{fit}} - \\nu^{\mathrm{exp}}}{\sigma_{\\nu^{\mathrm{exp}}}}`,
+        
         and should follow a standard noraml distribution.
 
         Parameters
