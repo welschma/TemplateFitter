@@ -150,14 +150,16 @@ class TemplateCollection:
         Name of the variable which is used to create the 
         Templates.
     bin_edges : np.ndarray
-        The bin edges of the created Templates. Shape is (nbins +1,).
+        The bin edges of the created Templates. Shape is (nbins+1,).
+    bin_mids : np.ndarray
+        The bin mids of the created Templates. Shape is (nbins,).
     values : np.ndarray
         Matrix of bin counts of the stored templates. Shape is 
         (number of templates, nbins). The first row corresponds
         to the first added template, the second row to the second
         added template and so on.
     yields : np.ndarray
-        Expected number of events per template. Shape is (num templates,).
+        Expected number of events per template. Shape is (n_templates,).
     rel_errors : np.ndarray
         Matrix of relative bin errors of the stored templates. Shape
         is (number of templates, nbins). The first row corresponds
