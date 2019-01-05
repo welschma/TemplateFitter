@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from templatefitter import Template, TemplateCollection, PoissonNLL, LikelihoodFitter
+from templatefitter import Template, TemplateCollection, PoissonNLL, LikelihoodFitter, ToyStudy
 
-class TestPoissonNLL(unittest.TestCase):
+class TestLikelihoodFitter(unittest.TestCase):
 
     def setUp(self):
         nsig = 10000

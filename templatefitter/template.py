@@ -208,8 +208,8 @@ class TemplateCollection:
         kwargs
             E.g. signal=100, background=5000.
         """
-        for key, val in kwargs.items():
-            self._template_map[key].expected_yield = val
+        for template, value in kwargs.items():
+            self._template_map[template].expected_yield = value
     
     def generate_toy_data(self):
         """Generates toy data using the poisson distribution.
