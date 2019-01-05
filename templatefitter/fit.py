@@ -9,22 +9,62 @@ class LikelihoodFitter:
 
     def __init__(self, nll):
         self._nll = nll
+        self._fit_result = None
 
-    def minimize(self, method='SLSQP'):
+    def minimize(self, method='SLSQP', constraints=None, get_cov=True):
         fit_result = minimize(
             fun=self._nll,
             x0=self._nll.x0,
-            method=method
+            method=method,
+            constraints=constraints
         )
 
-        hesse = ndt.Hessian(self._nll)(fit_result.x)
-        fit_result.covariance = np.linalg.inv(hesse)
-        fit_result.correlation = cov2corr(fit_result.covariance)
+        if get_cov:
+            hesse = ndt.Hessian(self._nll)(fit_result.x)
+            fit_result.hesse = hesse
+            fit_result.covariance = np.linalg.inv(hesse)
+            fit_result.correlation = cov2corr(fit_result.covariance)
+
+        if self._fit_result is None:
+            self._fit_result = fit_result
 
         return fit_result
 
-class LikelihoodProfiler:
-    pass
+    def profile(self, param_index, method='SLSQP', n_points=100, sigma=2.2, subtract_min=True):
+        if self._fit_result is None:
+            self.minimize()
+        
+        result = self._fit_result.x[param_index]
+        uncertainty = np.sqrt(
+            self._fit_result.covariance[param_index, param_index]
+            )
+        hesse_val = self._fit_result.hesse[param_index, param_index]
+
+        profile_points = np.linspace(
+            result - sigma*uncertainty, result - sigma*uncertainty, n_points
+        )
+
+        profile_values = []                        
+
+        for point in profile_points:
+            constraint = {
+                "type": "eq",
+                "fun": lambda x: x[param_index] - point
+                }
+            profile_value = self.minimize(
+                method=method, 
+                constraints=constraint,
+                get_cov=False).fun
+            
+            profile_values.append(profile_value)
+        
+        hesse_approx = 0.5*hesse_val*(profile_points-result)**2 + self._fit_result.fun
+
+        if subtract_min:
+            profile_values -= self._fit_result.fun
+            hesse_approx -= self._fit_result.fun
+
+        return profile_values, hesse_approx
 
 class ToyStudy:
     """This class helps you to perform toy monte carlo studies
