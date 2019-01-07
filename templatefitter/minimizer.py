@@ -25,7 +25,7 @@ class Parameters:
 
     Attributes
     ----------
-    names : List of str
+    names : list of str
         List of parameter names.
     nparams : int
         Number of parameters.
@@ -166,6 +166,46 @@ class Parameters:
 
 
 class Minimizer:
+    """General wrapper class around scipy.optimize.minimize
+    function. Allows mapping of parameter names to the array
+    entries used by scipy's `minimize` function.
+
+    Parameters
+    ----------
+    fcn : callable
+        Objective function to be minimized of type ``fun(x, *args)`
+        where x is an np.ndarray of shape (n,) and args is a tuple
+        of fixed parameters.
+    param_names : list of str
+        A list of parameter names. This maps the entries from the `x`
+        argument of `fcn` to strings.
+
+
+    Attributes
+    ----------
+    fcn_min_val : float
+        Value of the objective function at it's estimated minimum.
+    params : Parameters
+        Instance of the Parameter class. Stores the parameter values,
+        erros, covariance and correlation matrix.
+    param_values : np.ndarray
+        Estimated parameter values at the minimum of fcn.
+        Shape is (`nparams).
+    param_errors : np.ndarray
+        Estimated errors of the parameters at the minimum of fcn.
+        Shape is (`nparams).
+    param_covariance : np.ndarray
+        Estimated covariance matrix of the parameters. Calculated
+        from the inverse of the Hesse matrix of fcn evaluated at
+        it's minimum.
+        Shape is (`nparams`, `nparams`).
+    param_correlation : np.ndarray
+        Estimated correlation matrix of the parameters.
+        Shape is (`nparams`, `nparams`).
+    hesse : np.ndarray
+        Estimated Hesse matrix of fcn at it's minimum.
+        Shape is (`nparams`, `nparams`).
+    """
     def __init__(self, fcn, param_names):
         self._fcn = fcn
         self._params = Parameters(param_names)
@@ -182,6 +222,20 @@ class Minimizer:
         self._hesse_inv = None
 
     def minimize(self, initial_param_values, additional_args=(), get_hesse=True):
+        """Performs minimization of given objective function.
+
+        Parameters
+        ----------
+        initial_param_values : np.ndarray or list of floats
+            Initial values for the parameters used as starting values.
+            Shape is (`nparams`,).
+        additional_args : tuple
+            Tuple of additional arguemnts for the objective function.
+        get_hesse : bool
+            If True, the Hesse matrix is estimated at the minimum
+            of the objective function. This allows the calculation
+            of parameter errors. Default is True.
+        """
         constraints = self._create_constraints(initial_param_values, additional_args)
 
         opt_result = minimize(
@@ -212,10 +266,36 @@ class Minimizer:
             self._params.errors = np.sqrt(np.diag(self._hesse_inv))
 
     def fix_param(self, param_id):
+        """Fixes specified parameter to it's initial value given in
+        `initial_param_values`.
+
+        Parameters
+        ----------
+        param_id : int or str
+            Parameter identifier, which can be it's name or its index
+            in `param_names`.
+        """
         param_index = self.params.param_id_to_index(param_id)
         self._fixed_params.append(param_index)
 
     def _create_constraints(self, initial_param_values, args):
+        """Creates the dictionary used by scipy's minimize function
+        to constrain parameters. The dictionary is used to fix
+        parameters specified set in `fixed_param`.
+
+        Parameters
+        ----------
+        initial_param_values : np.ndarray or list of floats
+            Initial parameter values.
+        args : tuple
+            Tuple of additional arguemnts for the objective function.
+
+        Returns
+        -------
+        list of dict
+            A list of dictionaries, which is passed to scipy's
+            minimize function.
+        """
         constraints = list()
 
         for fixed_param in self._fixed_params:
