@@ -12,7 +12,32 @@ from templatefitter.utility import cov2corr
 
 
 class Parameters:
+    """Containter for parameters used by the Minimizer class.
+    Maps parameters described as arrays to names and indices.
+    Values for parameter values, errors, covariance and correlation
+    matrices are only available after they've been set by the
+    minimizer.
 
+    Parameters
+    ----------
+    names : list of str
+        List of parameter names.
+
+    Attributes
+    ----------
+    names : List of str
+        List of parameter names.
+    nparams : int
+        Number of parameters.
+    values : np.ndarray
+        Parameter values. Shape is (`nparams`,).
+    errors : np.ndarray
+        Parameter errors. Shape is (`nparams`,).
+    covariance : np.ndarray
+        Parameter covariance matrix. Shape is (`nparams`, `nparams`).
+    correlation : np.ndarray
+        Parameter correlation matrix. Shape is (`nparams`, `nparams`).
+    """
     def __init__(self, names):
         self._names = names
         self._nparams = len(names)
@@ -20,6 +45,76 @@ class Parameters:
         self._errors = None
         self._covariance = None
         self._correlation = None
+
+    def get_param_value(self, param_id):
+        """Returns value of parameter specified by `param_id`.
+
+        Parameters
+        ----------
+        param_id : int or str
+            Name or index in list of names of wanted paramater
+
+        Returns
+        -------
+        float
+        """
+        param_index = self.param_id_to_index(param_id)
+        return self.values[param_index]
+
+    def get_param_error(self, param_id):
+        """Returns error of parameter specified by `param_id`.
+
+        Parameters
+        ----------
+        param_id : int or str
+            Name or index in list of names of wanted paramater
+
+        Returns
+        -------
+        float
+        """
+        param_index = self.param_id_to_index(param_id)
+        return self.errors[param_index]
+
+    def __getitem__(self, param_id):
+        """Gets the value and error of the specified parameter.
+
+        Parameters
+        ----------
+        param_id : int or str
+            Parameter index or name.
+
+        Returns
+        -------
+        float
+            Parameter value.
+        float
+            Parameter error.
+        """
+        param_index = self.param_id_to_index(param_id)
+        return self.values[param_index], self.errors[param_index]
+
+    def param_id_to_index(self, param_id):
+        """Returns the index of the parameter specified by `param_id`.
+
+        Parameters
+        ----------
+        param_id : int or str
+            Parameter index or name.
+
+        Returns
+        -------
+        int
+        """
+        if isinstance(param_id, str):
+            param_index = self.names.index(param_id)
+        elif isinstance(param_id, int):
+            param_index = param_id
+        else:
+            raise ValueError(
+                "Specify the parameter either by its name (as str) or by its index (as int)."
+            )
+        return param_index
 
     @property
     def names(self):
@@ -32,39 +127,6 @@ class Parameters:
     @property
     def values(self):
         return self._values
-
-    def get_param_value(self, name):
-        param_index = self.names.index(name)
-        return self.values[param_index]
-
-    def get_param_error(self, name):
-        param_index = self.names.index(name)
-        return self.errors[param_index]
-
-    def __getitem__(self, item):
-        """Gets the value and error of the specified parameter.
-
-        Parameters
-        ----------
-        item : int or str
-            Parameter index or name.
-
-        Returns
-        -------
-        float
-            Parameter value.
-        float
-            Parameter error.
-        """
-        if isinstance(item, str):
-            param_index = self.names.index(item)
-        elif isinstance(item, int):
-            param_index = item
-        else:
-            raise ValueError(
-                "Specify the parameter either by its name (as str) or by its index (as int)."
-            )
-        return self.values[param_index], self.errors[param_index]
 
     @values.setter
     def values(self, new_values):
@@ -150,14 +212,7 @@ class Minimizer:
             self._params.errors = np.sqrt(np.diag(self._hesse_inv))
 
     def fix_param(self, param_id):
-        if isinstance(param_id, int):
-            param_index = param_id
-        elif isinstance(param_id, str):
-            param_index = self.params.names.index(param_id)
-        else:
-            raise ValueError(
-                "Specify the parameter either by its name (as str) or by its index (as int)."
-            )
+        param_index = self.params.param_id_to_index(param_id)
         self._fixed_params.append(param_index)
 
     def _create_constraints(self, initial_param_values, args):

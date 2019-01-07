@@ -62,9 +62,11 @@ class TestMinimizer(unittest.TestCase):
     def test_fix_param_by_string(self):
         self.minimizer.fix_param("x")
         self.minimizer.minimize([1.2, 1.1])
-        self.assertEqual(self.minimizer.params["x"][0], 1.2)
+        self.assertEqual(self.minimizer.params.get_param_value(0), 1.2)
+        self.assertAlmostEqual(self.minimizer.param_values[1], 1.2**2, 3)
 
     def test_fix_param_by_index(self):
         self.minimizer.fix_param(0)
         self.minimizer.minimize([1.2, 1.1])
-        self.assertEqual(self.minimizer.params["x"][0], 1.2)
+        self.assertEqual(self.minimizer.params.get_param_value("x"), 1.2)
+        self.assertAlmostEqual(self.minimizer.param_values[1], 1.2**2, 3)
