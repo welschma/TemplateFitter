@@ -6,8 +6,8 @@ class HistogramError(Exception):
     pass
 
 
-#TODO deal with underflow and overflow bins
-#TODO deal with mathematical operation on histograms like scaling
+# TODO deal with underflow and overflow bins
+# TODO deal with mathematical operation on histograms like scaling
 class Histogram:
     """Histogram container for data. Bins are of equal width.
 
@@ -52,8 +52,8 @@ class Histogram:
         self._nbins = nbins
         self._limits = limits
         self._bin_edges = np.linspace(
-            self.lower_limit, self.upper_limit, nbins+1
-            )
+            self.lower_limit, self.upper_limit, nbins + 1
+        )
         self._bin_counts = np.zeros(nbins)
         self._bin_entries = np.zeros(nbins)
         self._bin_errors_sq = np.zeros(nbins)
@@ -77,33 +77,33 @@ class Histogram:
         if weights is not None and isinstance(weights, list):
             weights = np.array(weights)
 
-        if len(data) != len(weights):
-            raise HistogramError(
-                "Shape of data array does not match weight array."
-                )
         if weights is None:
             weights = np.ones_like(data)
 
+        if len(data) != len(weights):
+            raise HistogramError(
+                "Shape of data array does not match weight array."
+            )
         self._bin_counts += scipy.stats.binned_statistic(
             x=data,
             values=weights,
             statistic="sum",
             bins=self._bin_edges
-            )[0]
+        )[0]
 
         self._bin_entries += scipy.stats.binned_statistic(
             x=data,
             values=weights,
             statistic="count",
             bins=self._bin_edges
-            )[0]
+        )[0]
 
         self._bin_errors_sq += scipy.stats.binned_statistic(
             x=data,
-            values=weights**2,
+            values=weights ** 2,
             statistic="sum",
             bins=self._bin_edges
-            )[0]
+        )[0]
 
     def scale(self, c):
         """Multiplies the histogram by the constant c.
@@ -116,9 +116,8 @@ class Histogram:
             Multiplicative constant value.
         """
         self._bin_counts *= c
-        self._bin_errors_sq *= c**2
+        self._bin_errors_sq *= c ** 2
 
-    
     @property
     def nbins(self):
         return self._nbins
@@ -134,7 +133,7 @@ class Histogram:
     @property
     def bin_mids(self):
         edges = self.bin_edges
-        return (edges[:-1 + edges[1:]])/2.
+        return (edges[:-1 + edges[1:]]) / 2.
 
     @property
     def bin_counts(self):
@@ -149,6 +148,10 @@ class Histogram:
         return np.sqrt(self._bin_errors_sq)
 
     @property
+    def bin_errors_sq(self):
+        return self._bin_errors_sq
+
+    @property
     def limits(self):
         return self._limits
 
@@ -161,6 +164,6 @@ class Histogram:
         return self._limits[1]
 
     def __str__(self):
-        return (f"Bin Edges: {self.bin_edges}" 
-        + f"\nBin Counts: {self.bin_counts}"
-        + f"\nBin Errors: {self.bin_errors}")
+        return (f"Bin Edges: {self.bin_edges}"
+                + f"\nBin Counts: {self.bin_counts}"
+                + f"\nBin Errors: {self.bin_errors}")

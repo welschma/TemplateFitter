@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from templatefitter import Template, TemplateCollection, PoissonNLL, LikelihoodFitter, ToyStudy
+from templatefitter import TemplateModel, CompositeTemplateModel, PoissonNLL, TemplateFitter, ToyStudy
 
 class TestLikelihoodFitter(unittest.TestCase):
 
@@ -21,7 +21,7 @@ class TestLikelihoodFitter(unittest.TestCase):
         })
 
 
-        self.tc = TemplateCollection("x", 100, (100., 140.))
+        self.tc = CompositeTemplateModel("x", 100, (100., 140.))
         self.tc.add_template("sig", self.sig_df)
         self.tc.add_template("bkg", self.bkg_df)
 
@@ -36,7 +36,7 @@ class TestLikelihoodFitter(unittest.TestCase):
 
 
     def test_fit(self):
-        lf = LikelihoodFitter(self.nll)
+        lf = TemplateFitter(self.nll)
         result = lf.minimize()
 
         self.assertTrue(

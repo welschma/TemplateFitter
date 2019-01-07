@@ -32,10 +32,10 @@ class PoissonNLL(AbstractNLL):
 
     Parameters
     ----------
-    data : np.ndarray
+    data : Histogram
         Bin counts of the data histogram. Shape is (nbins,).
-    templates : TemplateCollection
-        A TemplateCollection instance. The templates are used to
+    templates : CompositeTemplateModel
+        A CompositeTemplateModel instance. The templates are used to
         extract the contribution from each process described by
         the templates to the measured data set.
     
@@ -77,5 +77,5 @@ class PoissonNLL(AbstractNLL):
         """
         poi = x
         exp_evts_per_bin = poi @ self.fraction_matrix()
-        return np.sum(exp_evts_per_bin - self._data * np.log(exp_evts_per_bin))
+        return np.sum(exp_evts_per_bin - self._data.bin_counts * np.log(exp_evts_per_bin))
 

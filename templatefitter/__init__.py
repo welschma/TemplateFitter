@@ -1,5 +1,5 @@
 from templatefitter.histogram import Histogram
-from templatefitter.template import Template, TemplateCollection
+from templatefitter.template import TemplateModel, CompositeTemplateModel
 from templatefitter.nll import PoissonNLL
-from templatefitter.fit import LikelihoodFitter,  ToyStudy
+from templatefitter.fitter import TemplateFitter,  ToyStudy
 

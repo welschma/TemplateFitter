@@ -3,14 +3,14 @@ Template class for a binned likelihood fit.
 """
 
 import collections
+
 import numpy as np
-
 from scipy.stats import poisson
-
 from templatefitter import Histogram
 
-#TODO add covariance matrices to templates
-class Template:
+
+# TODO add covariance matrices to templates
+class TemplateModel:
     """Template provides attributes and methods to compute a
     binned likelihood function based on a Poisson model for each bin.
 
@@ -37,6 +37,10 @@ class Template:
     name : str
     values : np.ndarray
         Expected value of each bin of the template. Shape (nbins,).
+    cov_mat : np.ndarray
+        Covariance matrix of the template. This is the sum of the
+        diagonal matrix constructed form the bin errors squared and
+        all added covariance matrices.
     errors : np.ndarray
         Expected error of each bin of the template.
         This is the square root of the sum of squared event
@@ -54,24 +58,26 @@ class Template:
     """
 
     def __init__(
-        self,
-        name,
-        variable,
-        nbins,
-        limits,
-        df=None,
-        weight_key="weight"
-        ):
+            self,
+            name,
+            variable,
+            nbins,
+            limits,
+            df=None,
+            weight_key="weight"
+    ):
 
-       self._name = name
-       self._variable = variable
-       self._hist = Histogram(nbins, limits)
-       self._weight_key = weight_key
+        self._name = name
+        self._variable = variable
+        self._nbins = nbins
+        self._limits = limits
+        self._hist = Histogram(nbins, limits)
+        self._weight_key = weight_key
 
-       self._cov_mats = None
+        self._cov_mats = list()
 
-       if df is not None:
-           self.add_df(df)
+        if df is not None:
+            self.add_df(df)
 
     def add_df(self, df):
         """Fills template histogram with events from the given 
@@ -87,17 +93,50 @@ class Template:
             A pd.DataFrame with events for this template.
         """
         data = df[self._variable]
-        
+
         try:
             weights = df[self._weight_key]
         except KeyError:
             weights = np.ones_like(data)
-        
+
         self._hist.fill(data, weights)
+
+    def add_cov_mat(self, cov_mat):
+        """Appends a covariance matrix to the list of covariance
+        matrices for this template.
+
+        Parameters
+        ----------
+        cov_mat : np.ndarray
+            Covariance matrix for the template. Shape is expected
+            to be (`nbins`, `nbins`).
+        """
+        self._cov_mats.append(cov_mat)
+
+    def add_cov_mats(self, cov_mats):
+        """Extends to the list of covariance matrices for this
+        template with the given list of covariance matrices.
+
+        Parameters
+        ----------
+        cov_mat : list of np.ndarray
+            Covariance matrices for the template. Shape is expected
+            to be (`nbins`, `nbins`).
+        """
+        self._cov_mats.extend(cov_mats)
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def cov_matrix(self):
+        stat_error = np.diag(self._hist.bin_errors_sq)
+
+        for cov_mat in self._cov_mats:
+            stat_error += cov_mat
+
+        return stat_error
 
     @property
     def values(self):
@@ -106,10 +145,10 @@ class Template:
     @property
     def errors(self):
         return self._hist.bin_errors
-    
+
     @property
     def rel_errors(self):
-        return self._hist.bin_errors/self._hist.bin_counts
+        return self._hist.bin_errors / self._hist.bin_counts
 
     @property
     def expected_yield(self):
@@ -117,7 +156,7 @@ class Template:
 
     @expected_yield.setter
     def expected_yield(self, new_yield):
-        scale_factor = new_yield/self.expected_yield
+        scale_factor = new_yield / self.expected_yield
         self._hist.scale(scale_factor)
 
     @property
@@ -125,7 +164,7 @@ class Template:
         return self._hist.bin_edges
 
 
-class TemplateCollection:
+class CompositeTemplateModel:
     """TemplateCollection is a container that creates and
     stores Template instances and acts as an interface to
     other classes or functions.
@@ -172,9 +211,9 @@ class TemplateCollection:
         self._weight_key = weight_key
         self._nbins = nbins
         self._limits = limits
-        self._bin_edges = np.linspace(*limits, nbins+1)
+        self._bin_edges = np.linspace(*limits, nbins + 1)
         self._template_map = collections.OrderedDict()
-        
+
     def add_template(self, name, df):
         """Creates a template labeled `name` from the given
         pd.DataFrame. The templates are stored in an internal map.
@@ -190,9 +229,9 @@ class TemplateCollection:
             If the DataFrame does not have a column identified by
             `weight_key`, a weight of 1.0 is assigned to each event.
         """
-        self._template_map[name] = Template(
-            name, 
-            self._variable, 
+        self._template_map[name] = TemplateModel(
+            name,
+            self._variable,
             self._nbins,
             self._limits,
             df,
@@ -210,7 +249,7 @@ class TemplateCollection:
         """
         for template, value in kwargs.items():
             self._template_map[template].expected_yield = value
-    
+
     def generate_toy_data(self):
         """Generates toy data using the poisson distribution.
         For each bin, a random number following a poisson distribution
@@ -239,7 +278,7 @@ class TemplateCollection:
 
     @property
     def bin_mids(self):
-        return (self.bin_edges[:-1] + self.bin_edges[1:])/2
+        return (self.bin_edges[:-1] + self.bin_edges[1:]) / 2
 
     @property
     def values(self):

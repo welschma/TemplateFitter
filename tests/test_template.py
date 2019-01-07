@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 
-from templatefitter import Template, TemplateCollection
+from templatefitter import TemplateModel, CompositeTemplateModel
 
 class TestTemplate(unittest.TestCase):
 
@@ -15,7 +15,7 @@ class TestTemplate(unittest.TestCase):
         })
 
     def test_default_constructor(self):
-        template = Template("test", "x", 2, (1., 7.), self.df)
+        template = TemplateModel("test", "x", 2, (1., 7.), self.df)
 
         true_counts = scipy.stats.binned_statistic(
             self.df["x"], self.df["weight"], 'sum', template.bin_edges
@@ -42,7 +42,7 @@ class TestTemplate(unittest.TestCase):
 
     def test_set_yield(self):
 
-        template = Template("test", "x", 2, (1., 7.), self.df)
+        template = TemplateModel("test", "x", 2, (1., 7.), self.df)
 
         true_counts = scipy.stats.binned_statistic(
             self.df["x"], self.df["weight"], 'sum', template.bin_edges
@@ -70,7 +70,7 @@ class TestTemplateCollection(unittest.TestCase):
             "weight": [1.0, 1.0, 1.5, 2.0, 2.0, 1.0, 2.0, 2.5, 1.5, 3.0]
         })
 
-        self.tc = TemplateCollection("x", 2, (1., 7.))
+        self.tc = CompositeTemplateModel("x", 2, (1., 7.))
         self.tc.add_template("sig", self.sig_df)
         self.tc.add_template("bkg", self.bkg_df)
     

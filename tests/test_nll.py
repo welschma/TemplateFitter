@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 
-from templatefitter import Template, TemplateCollection, PoissonNLL
+from templatefitter import TemplateModel, CompositeTemplateModel, PoissonNLL, Histogram
 
 class TestPoissonNLL(unittest.TestCase):
 
@@ -24,14 +24,14 @@ class TestPoissonNLL(unittest.TestCase):
             "x": [1, 1,  5, 5, 7, 1, 1, 3, 3, 2, 4, 4, 7]
         })
 
-        self.tc = TemplateCollection("x", 2, (1., 7.))
+        self.tc = CompositeTemplateModel("x", 2, (1., 7.))
         self.tc.add_template("sig", self.sig_df)
         self.tc.add_template("bkg", self.bkg_df)
 
-        self.hdata = np.histogram(self.data.x, bins=self.tc.bin_edges)[0]
+        self.hdata = Histogram(2, (1., 7.), data=self.data.x.values)
 
-        self.sig_temp = Template("sig", "x", 2, (1., 7.), self.sig_df)
-        self.bkg_temp = Template("bkg", "x", 2, (1., 7.), self.bkg_df)
+        self.sig_temp = TemplateModel("sig", "x", 2, (1., 7.), self.sig_df)
+        self.bkg_temp = TemplateModel("bkg", "x", 2, (1., 7.), self.bkg_df)
     
     def test_fraction_matrix(self):
 
@@ -58,7 +58,7 @@ class TestPoissonNLL(unittest.TestCase):
         test_params = np.array([4,5])
         test_evts_per_bin = test_params@test_fractions
         test_nll = np.sum(
-            test_evts_per_bin - np.log(test_evts_per_bin)*self.hdata
+            test_evts_per_bin - np.log(test_evts_per_bin)*self.hdata.bin_counts
         )
         
         np.testing.assert_array_equal(nll(test_params), test_nll)
