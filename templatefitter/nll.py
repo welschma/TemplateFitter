@@ -26,7 +26,7 @@ class PoissonNLL(AbstractNLL):
     :math:`-\log(L) = \sum\limits_i^{n_{\mathrm{bins}}} \\nu_i - n_i \log(\\nu_i)`,
 
     with:
-    
+ 
     * :math:`\\nu_i` - expected number of events in bin :math:`i`
     * :math:`n_i` - measured number of events in bin :math:`i`
 
@@ -36,7 +36,7 @@ class PoissonNLL(AbstractNLL):
         Bin counts of the data histogram. Shape is (nbins,).
     templates : TemplateCollection
         A TemplateCollection instance. The templates are used to
-        extract the contribution from each process described by 
+        extract the contribution from each process described by
         the templates to the measured data set.
     
     Attributes

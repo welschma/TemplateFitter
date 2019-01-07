@@ -6,12 +6,38 @@ from scipy.optimize import minimize
 from templatefitter.utility import cov2corr
 
 class LikelihoodFitter:
+    """This class performs the parameter estimation and calculation
+    of a profile likelihood based on a constructed negative log
+    likelihood function.
 
+    Parameters
+    ----------
+    nll : implementation of a AbstractNLL
+        An instance of a class which inherits from AbstractNLL.
+        This represents a negative log likelihood function.
+    """
     def __init__(self, nll):
         self._nll = nll
         self._fit_result = None
 
-    def minimize(self, method='SLSQP', constraints=None, get_cov=True):
+    def minimize(self, method='SLSQP', constraints=(), get_cov=True):
+        """[summary]
+        
+        Parameters
+        ----------
+        method : str, optional
+            [description] (the default is 'SLSQP', which [default_description])
+        constraints : tuple, optional
+            [description] (the default is (), which [default_description])
+        get_cov : bool, optional
+            [description] (the default is True, which [default_description])
+        
+        Returns
+        -------
+        [type]
+            [description]
+        """
+
         fit_result = minimize(
             fun=self._nll,
             x0=self._nll.x0,
@@ -30,7 +56,17 @@ class LikelihoodFitter:
 
         return fit_result
 
-    def profile(self, param_index, method='SLSQP', n_points=100, sigma=2.2, subtract_min=True):
+
+    def _get_hesse_approx(self, param_index, profile_points):
+
+        result = self._fit_result.x[param_index]
+        hesse_val = self._fit_result.hesse[param_index, param_index]
+        hesse_approx = (0.5*hesse_val*(profile_points-result)**2 +
+            self._fit_result.fun)
+
+        return hesse_approx 
+
+    def profile(self, param_index, method='SLSQP', n_points=100, sigma=2., subtract_min=True):
         if self._fit_result is None:
             self.minimize()
         
@@ -38,13 +74,12 @@ class LikelihoodFitter:
         uncertainty = np.sqrt(
             self._fit_result.covariance[param_index, param_index]
             )
-        hesse_val = self._fit_result.hesse[param_index, param_index]
 
         profile_points = np.linspace(
-            result - sigma*uncertainty, result - sigma*uncertainty, n_points
+            result - sigma*uncertainty, result + sigma*uncertainty, n_points
         )
 
-        profile_values = []                        
+        profile_values = np.array([])                        
 
         for point in profile_points:
             constraint = {
@@ -56,15 +91,15 @@ class LikelihoodFitter:
                 constraints=constraint,
                 get_cov=False).fun
             
-            profile_values.append(profile_value)
-        
-        hesse_approx = 0.5*hesse_val*(profile_points-result)**2 + self._fit_result.fun
+            profile_values = np.append(profile_values, profile_value)
+
+        hesse_approx = self._get_hesse_approx(param_index, profile_points) 
 
         if subtract_min:
             profile_values -= self._fit_result.fun
             hesse_approx -= self._fit_result.fun
 
-        return profile_values, hesse_approx
+        return profile_points, profile_values, hesse_approx
 
 class ToyStudy:
     """This class helps you to perform toy monte carlo studies
@@ -199,7 +234,3 @@ class ToyStudy:
                 "Toy experiments have not yet been performed. "
                 " Execute 'do_experiments' first."
             )
-
-            
-
-
