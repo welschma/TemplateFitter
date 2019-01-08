@@ -133,7 +133,7 @@ class Histogram:
     @property
     def bin_mids(self):
         edges = self.bin_edges
-        return (edges[:-1 + edges[1:]]) / 2.
+        return (edges[:-1] + edges[1:]) / 2.
 
     @property
     def bin_counts(self):
