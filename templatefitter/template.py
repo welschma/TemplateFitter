@@ -5,8 +5,174 @@ Template class for a binned likelihood fit.
 import collections
 
 import numpy as np
+import matplotlib.pyplot as plt
+
+from abc import ABC, abstractmethod, abstractproperty
+
 from scipy.stats import poisson
 from templatefitter import Histogram
+from templatefitter.utility import cov2corr
+
+
+class TemplateParameter:
+    KNOWN_ERROR_TYPES = ["sym", "asym"]
+
+    def __init__(self, name, value=None, error=None, error_type="sym"):
+        self._name = name
+        self._value = value
+        self._error = error
+        self._error_type = error_type
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._value = new_value
+
+    @property
+    def error(self):
+        return self._error
+
+    @error.setter
+    def error(self, new_error):
+        self._error = new_error
+
+    @property
+    def error_type(self):
+        return self._error_type
+
+    @error_type.setter
+    def error_type(self, new_error_type):
+        if new_error_type.lower() in self.KNOWN_ERROR_TYPES:
+            self._error_type = new_error_type
+        else:
+            raise ValueError("Unknown error type!\n"
+                             f"Value can only be set to {self.KNOWN_ERROR_TYPES}")
+
+
+class AbstractTemplateModel(ABC):
+
+    def __init__(self, name, var_id, nbins, limits, df, weight_id="weight"):
+
+        self._name = name
+        self._vid = var_id
+        self._wid = weight_id
+
+        self._nbins = nbins
+        self._limits = limits
+        self._hist = Histogram(nbins, limits)
+        self._hist.fill(df[var_id].values, df[weight_id].values)
+
+        # set initial yield paramter value equal to sum of all
+        # weights in template histogram (error equal to sqrt of
+        # sum of # all weights squared)
+        self._param_yield = TemplateParameter(
+            name + "_yield",
+            np.sum(self._hist.bin_counts),
+            np.sqrt(np.sum(self._hist.bin_errors_sq))
+        )
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def num_bins(self):
+        return self._nbins
+
+    @property
+    def bin_edges(self):
+        return self._hist.bin_edges
+
+    @property
+    def bin_mids(self):
+        return self._hist.bin_mids
+
+    @property
+    def yield_value(self):
+        return self._param_yield.value
+
+    @yield_value.setter
+    def yield_value(self, new_value):
+        self._param_yield.value = new_value
+
+    @property
+    def yield_error(self):
+        return self._param_yield.error
+
+    @yield_error.setter
+    def yield_error(self, new_error):
+        self._param_yield.error = new_error
+
+    @property
+    def values(self):
+        return self.bin_fractions()*self.yield_value
+
+    @abstractmethod
+    def bin_fractions(self):
+        pass
+
+
+class SimpleTemplateModel(AbstractTemplateModel):
+
+    def __init__(self, name, var_id, nbins, limits, df, weight_id="weight"):
+
+        super().__init__(name, var_id, nbins, limits, df, weight_id)
+
+    def bin_fractions(self):
+        return self._hist.bin_counts / np.sum(self._hist.bin_counts)
+
+    def plot_on(self, ax, **kwargs):
+        ax.hist(self.bin_mids, weights=self.values, bins=self.bin_edges, **kwargs)
+
+
+class AdvancedTemplateModel(AbstractTemplateModel):
+    def __init__(self, name, var_id, nbins, limits, df, weight_id="weight"):
+
+        super().__init__(name, var_id, nbins, limits, df, weight_id)
+
+        # values and errors of nuissance parameter are np arrays
+        # of shape (self.num_bins,). The pre fit value is zero.
+        self._param_nuissance = TemplateParameter(
+            self.name+"_nuissance",
+            np.zeros(self.num_bins),
+            np.ones(self.num_bins)  # this error is meant in "standard deviations"
+        )
+
+        # statistical covariance matrix as diagonal matrix of the
+        # sum of weights squared per bin
+        # the total covariance matrix is the sum of the statistical
+        # covariance and any additional covariance matrix that has been
+        # added
+        self._cov_mat = np.diag(self._hist.bin_errors_sq)
+
+    def add_cov_mat(self, cov_mat):
+        if cov_mat.shape != self._cov_mat.shape:
+            raise ValueError("Shape of given covariance matrix does not"
+                             "match template shape.")
+        self._cov_mat += cov_mat
+
+    @property
+    def cov_mat(self):
+        return self._cov_mat
+
+    @property
+    def corr_mat(self):
+        return cov2corr(self.cov_mat)
+
+    @property
+    def uncertainties(self):
+        return np.sqrt(np.diag(self.cov_mat))
+
+    @property
+    def values(self):
+        return self.bin_fractions(self._param_nuissance.value)*self.yield_value
+
+    def bin_fractions(self, x):
+        per_bin_yields = self._hist.bin_counts*(1 + x*self.uncertainties)
+        return per_bin_yields/np.sum(per_bin_yields)
 
 
 # TODO add covariance matrices to templates
