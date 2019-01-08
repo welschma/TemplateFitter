@@ -13,12 +13,12 @@ Histogram
 
 Template
 ########
-.. autoclass:: templatefitter.Template
+.. autoclass:: templatefitter.TemplateModel
     :members:
 
 TemplateCollection
 ##################
-.. autoclass:: templatefitter.TemplateCollection
+.. autoclass:: templatefitter.CompositeTemplateModel
     :members:
 
 Likelihood Functions
@@ -35,6 +35,19 @@ Fitting Functions
 ToyStudy
 ########
 .. autoclass:: templatefitter.ToyStudy
+    :members:
+
+
+Minimizer
+---------
+Parameters
+##########
+.. autoclass:: templatefitter.Parameters
+    :members:
+
+Minimizer
+#########
+.. autoclass:: templatefitter.Minimizer
     :members:
 
 

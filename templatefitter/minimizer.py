@@ -112,7 +112,8 @@ class Parameters:
             param_index = param_id
         else:
             raise ValueError(
-                "Specify the parameter either by its name (as str) or by its index (as int)."
+                "Specify the parameter either by its name (as str) or by "
+                "its index (as int)."
             )
         return param_index
 
@@ -131,7 +132,8 @@ class Parameters:
     @values.setter
     def values(self, new_values):
         if not len(new_values) == self.nparams:
-            raise ValueError("Number of parameter values must be equal to number of parameters")
+            raise ValueError("Number of parameter values must be equal"
+                             " to number of parameters")
         self._values = new_values
 
     @property
@@ -141,7 +143,8 @@ class Parameters:
     @errors.setter
     def errors(self, new_errors):
         if not len(new_errors) == self.nparams:
-            raise ValueError("Number of parameter errors must be equal to number of parameters")
+            raise ValueError("Number of parameter errors must be equal"
+                             " to number of parameters")
         self._errors = new_errors
 
     @property
@@ -151,7 +154,8 @@ class Parameters:
     @covariance.setter
     def covariance(self, new_covariance):
         if not new_covariance.shape == (self.nparams, self.nparams):
-            raise ValueError("New covariance matrix shape must be equal to (nparams, nparams)")
+            raise ValueError("New covariance matrix shape must be equal"
+                             " to (nparams, nparams)")
         self._covariance = new_covariance
 
     @property
@@ -161,7 +165,8 @@ class Parameters:
     @correlation.setter
     def correlation(self, new_correlation):
         if not new_correlation.shape == (self.nparams, self.nparams):
-            raise ValueError("New correlation matrix shape must be equal to (nparams, nparams)")
+            raise ValueError("New correlation matrix shape must be equal"
+                             " to (nparams, nparams)")
         self._correlation = new_correlation
 
 
@@ -173,38 +178,12 @@ class Minimizer:
     Parameters
     ----------
     fcn : callable
-        Objective function to be minimized of type ``fun(x, *args)`
-        where x is an np.ndarray of shape (n,) and args is a tuple
+        Objective function to be minimized of type ``fun(x, *args)``
+        where `x` is an np.ndarray of shape (`n`,) and args is a tuple
         of fixed parameters.
     param_names : list of str
         A list of parameter names. This maps the entries from the `x`
         argument of `fcn` to strings.
-
-
-    Attributes
-    ----------
-    fcn_min_val : float
-        Value of the objective function at it's estimated minimum.
-    params : Parameters
-        Instance of the Parameter class. Stores the parameter values,
-        erros, covariance and correlation matrix.
-    param_values : np.ndarray
-        Estimated parameter values at the minimum of fcn.
-        Shape is (`nparams).
-    param_errors : np.ndarray
-        Estimated errors of the parameters at the minimum of fcn.
-        Shape is (`nparams).
-    param_covariance : np.ndarray
-        Estimated covariance matrix of the parameters. Calculated
-        from the inverse of the Hesse matrix of fcn evaluated at
-        it's minimum.
-        Shape is (`nparams`, `nparams`).
-    param_correlation : np.ndarray
-        Estimated correlation matrix of the parameters.
-        Shape is (`nparams`, `nparams`).
-    hesse : np.ndarray
-        Estimated Hesse matrix of fcn at it's minimum.
-        Shape is (`nparams`, `nparams`).
     """
     def __init__(self, fcn, param_names):
         self._fcn = fcn
@@ -236,7 +215,7 @@ class Minimizer:
             of the objective function. This allows the calculation
             of parameter errors. Default is True.
         """
-        constraints = self._create_constraints(initial_param_values, additional_args)
+        constraints = self._create_constraints(initial_param_values)
 
         opt_result = minimize(
             fun=self._fcn,
@@ -278,7 +257,7 @@ class Minimizer:
         param_index = self.params.param_id_to_index(param_id)
         self._fixed_params.append(param_index)
 
-    def _create_constraints(self, initial_param_values, args):
+    def _create_constraints(self, initial_param_values):
         """Creates the dictionary used by scipy's minimize function
         to constrain parameters. The dictionary is used to fix
         parameters specified set in `fixed_param`.
@@ -287,8 +266,6 @@ class Minimizer:
         ----------
         initial_param_values : np.ndarray or list of floats
             Initial parameter values.
-        args : tuple
-            Tuple of additional arguemnts for the objective function.
 
         Returns
         -------
@@ -302,8 +279,7 @@ class Minimizer:
             constraints.append(
                 {
                     "type": "eq",
-                    "fun": lambda x: x[fixed_param] - initial_param_values[fixed_param],
-                    "args": args
+                    "fun": lambda x: x[fixed_param] - initial_param_values[fixed_param]
                 }
             )
 
@@ -312,33 +288,70 @@ class Minimizer:
     @staticmethod
     @functools.lru_cache(maxsize=128)
     def calculate_hesse_matrix(fcn, x, args):
+        """Calculates the Hesse matrix of callable `fcn` numerically.
+
+        Parameters
+        ----------
+        fcn : callable
+            Objective function of type ``fun(x, *args)``.
+        x : np.ndarray
+            Parameters of `fcn` as np.ndarray of shape (`nparams`,).
+        args : tuple
+            Additional arguments for `fcn`.
+
+        Returns
+        -------
+        np.ndarray
+            Hesse matrix of `fcn` at point x. Shape is (`nparams`, `nparams`).
+        """
         return ndt.Hessian(fcn)(x, *args)
 
     @property
     def fcn_min_val(self):
+        """str: Value of the objective function at it's estimated minimum.
+        """
         return self._fcn_min_val
 
     @property
     def params(self):
+        """Parameters: Instance of the Parameter class. Stores the parameter values,
+        errors, covariance and correlation matrix.
+        """
         return self._params
 
     @property
     def param_values(self):
+        """np.ndarray: Estimated parameter values at the minimum of fcn.
+        Shape is (`nparams`).
+        """
         return self._params.values
 
     @property
     def param_errors(self):
+        """np.ndarray: Estimated parameter values at the minimum of fcn.
+        Shape is (`nparams`).
+        """
         return self._params.errors
 
     @property
     def param_covariance(self):
+        """np.ndarray: Estimated covariance matrix of the parameters.
+        Calculated from the inverse of the Hesse matrix of fcn evaluated
+        at it's minimum. Shape is (`nparams`, `nparams`).
+        """
         return self._params.covariance
 
     @property
     def param_correlation(self):
+        """np.ndarray: Estimated correlation matrix of the parameters.
+         Shape is (`nparams`, `nparams`).
+         """
         return self._params.correlation
 
     @property
     def hesse(self):
+        """np.ndarray: Estimated Hesse matrix of fcn at it's minimum.
+        Shape is (`nparams`, `nparams`).
+        """
         return self._hesse
 
