@@ -308,6 +308,44 @@ class NewCompositeTemplateModel:
     def num_templates(self):
         return self.num_simple_templates + self.num_advanced_templates
 
+    def bin_fractions(self, nuissance_params):
+
+        logging.debug(f"Calling 'bin_fractions' with nuissance parameters:\n"
+                      f"{nuissance_params}")
+
+        nuiss_params_per_template = iter(np.split(nuissance_params, self.num_advanced_templates))
+
+        fractions_per_template = list()
+
+        for tid, template in self._templates.items():
+            if tid in self._advanced_templates:
+                fractions_per_template.append(template.bin_fractions(next(nuiss_params_per_template)))
+            else:
+                fractions_per_template.append(template.bin_fractions())
+
+        logging.debug(f"Bin fractions:\n"
+                      f"{np.array(fractions_per_template)}")
+
+        return np.array(fractions_per_template)
+
+    def plot_on(self, ax, **kwargs):
+        bin_mids = [self.bin_mids for _ in range(self.num_templates)]
+        bin_counts = [template.values for template in self._templates.values()]
+        labels = [template.name for template in self._templates.values()]
+        ax.hist(bin_mids, weights=bin_counts, bins=self.bin_edges,
+                edgecolor='black', histtype="stepfilled", lw=0.5,
+                label=labels, stacked=True, **kwargs)
+
+        uncertainties_sq = np.array([self._templates[tid].uncertainties**2 for tid in self._advanced_templates])
+        total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
+        logging.debug(f"{total_uncertainty}")
+        total_bin_count = np.sum(np.array(bin_counts), axis=0)
+        logging.debug(f"{total_bin_count}")
+
+        ax.bar(x=bin_mids[0], height=2 * total_uncertainty, width=self.bin_width,
+               bottom=total_bin_count - total_uncertainty, color='black', hatch="///////",
+               fill=False, lw=0)
+
     def _register_template(self, ttype, tid):
         if ttype.lower() == "simple":
             self._simple_templates.append(tid)
@@ -326,43 +364,6 @@ class NewCompositeTemplateModel:
         if not(eq_vid and eq_num_bins and eq_limits):
             raise ValueError("Given template is not compatible with"
                              " this collection.")
-
-    def bin_fractions(self, nuissance_params):
-
-        logging.debug(f"Calling 'bin_fractions' with nuissance parameters:\n"
-                      f"{nuissance_params}")
-
-        nuiss_params_per_template = iter(np.split(nuissance_params, self.num_advanced_templates))
-
-        fractions_per_template = list()
-
-        for tid,template in self._templates.items():
-
-            if tid in self._advanced_templates:
-                fractions_per_template.append(template.bin_fractions(next(nuiss_params_per_template)))
-            else:
-                fractions_per_template.append(template.bin_fractions())
-        logging.debug(f"Bin fractions:\n"
-                      f"{np.array(fractions_per_template)}")
-        return np.array(fractions_per_template)
-
-    def plot_on(self, ax, **kwargs):
-        bin_mids = [self.bin_mids for _ in range(self.num_templates)]
-        bin_counts = [template.values for template in self._templates.values()]
-        labels = [template.name for template in self._templates.values()]
-        ax.hist(bin_mids, weights=bin_counts, bins=self.bin_edges,
-                edgecolor='black', histtype="stepfilled", lw=0.5,
-                label=labels, stacked=True, **kwargs)
-
-        uncertainties_sq = np.array([self._templates[tid].uncertainties**2 for tid in self._advanced_templates])
-        total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
-        logging.info(f"{total_uncertainty}")
-        total_bin_count = np.sum(np.array(bin_counts), axis=0)
-        logging.info(f"{total_bin_count}")
-
-        ax.bar(x=bin_mids[0], height=2 * total_uncertainty, width=self.bin_width,
-               bottom=total_bin_count - total_uncertainty, color='black', hatch="///////",
-               fill=False, lw=0)
 
 
 
