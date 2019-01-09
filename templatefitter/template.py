@@ -14,44 +14,6 @@ from templatefitter.utility import cov2corr
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-# this class can be removed eventually
-class TemplateParameter:
-    KNOWN_ERROR_TYPES = ["sym", "asym"]
-
-    def __init__(self, name, value=None, error=None, error_type="sym"):
-        self._name = name
-        self._value = value
-        self._error = error
-        self._error_type = error_type
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, new_value):
-        self._value = new_value
-
-    @property
-    def error(self):
-        return self._error
-
-    @error.setter
-    def error(self, new_error):
-        self._error = new_error
-
-    @property
-    def error_type(self):
-        return self._error_type
-
-    @error_type.setter
-    def error_type(self, new_error_type):
-        if new_error_type.lower() in self.KNOWN_ERROR_TYPES:
-            self._error_type = new_error_type
-        else:
-            raise ValueError("Unknown error type!\n"
-                             f"Value can only be set to {self.KNOWN_ERROR_TYPES}")
-
 
 class AbstractTemplateModel(ABC):
     """Abstract base class for template models. This class implements
