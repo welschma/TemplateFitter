@@ -108,6 +108,9 @@ class AbstractTemplateModel(ABC):
     def yield_value(self, new_value):
         self._param_yield_value = new_value
 
+    def reset_yield_value(self):
+        self.yield_value = np.sum(self._hist.bin_counts)
+
     @property
     def yield_error(self):
         return self._param_yield_error
@@ -201,7 +204,16 @@ class AdvancedTemplateModel(AbstractTemplateModel):
 
     @property
     def uncertainties(self):
-        return self._uncertainties
+        """numpy.ndarray: Total uncertainty per bin. This value is the
+        product of the relative uncertainty per bin and the current bin
+        values. Shape is (`num_bins`,)."""
+        return self.rel_uncertainties*self.values
+
+    @property
+    def rel_uncertainties(self):
+        """numpy.ndarray: Relative uncertainty per bin. This value is fix.
+        Shape is (`num_bins`,)."""
+        return self._uncertainties/self._hist.bin_counts
 
     @property
     def values(self):
@@ -209,7 +221,7 @@ class AdvancedTemplateModel(AbstractTemplateModel):
 
     def bin_fractions(self, nuissance_param_values):
         per_bin_yields = self._hist.bin_counts * (
-                1 + nuissance_param_values * self.uncertainties)
+                1 + nuissance_param_values * self.rel_uncertainties)
         return per_bin_yields / np.sum(per_bin_yields)
 
 
