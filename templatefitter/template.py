@@ -61,6 +61,16 @@ class AbstractTemplate(ABC):
         self._param_yield_value = np.sum(self._hist.bin_counts)
         self._param_yield_error = np.sum(self._hist.bin_errors_sq)
 
+    # -- public methods --
+
+    def reset_yield_value(self):
+        """Resets the yield parameter to it's initial value  which is the
+        sum of weighted bin counts in the template histogram.
+        """
+        self._param_yield_value = np.sum(self._hist.bin_counts)
+
+    # -- properties --
+
     @property
     def name(self):
         """str: Template name."""
@@ -108,11 +118,6 @@ class AbstractTemplate(ABC):
     def yield_value(self, new_value):
         self._param_yield_value = new_value
 
-    def reset_yield_value(self):
-        """Resets the yield parameter to it's initial value  which is the
-        sum of weighted bin counts in the template histogram."""
-        self.yield_value = np.sum(self._hist.bin_counts)
-
     @property
     def yield_error(self):
         """float: Error of the yield parameter. By default it is not set
@@ -130,10 +135,18 @@ class AbstractTemplate(ABC):
         yield parameter."""
         return self.bin_fractions() * self._param_yield_value
 
+    # -- abstract methods --
+
     @abstractmethod
     def bin_fractions(self):
         """Abstract method which, when implemented, will return the
         bin fractions of the template.
+        """
+        pass
+
+    @abstractmethod
+    def plot_on(self):
+        """Plots the template as histogram on a given axis.
         """
         pass
 
@@ -240,6 +253,8 @@ class AdvancedTemplate(AbstractTemplate):
         # covariance and any additional covariance matrix that has been
         # added
         self._cov_mat = np.diag(self._hist.bin_errors_sq)
+        self._corr_mat = cov2corr(self._cov_mat)
+        self._inv_corr_mat = np.linalg.inv(self._corr_mat)
         self._uncertainties = np.sqrt(np.diag(self._cov_mat))
 
     def add_cov_mat(self, cov_mat):
@@ -257,6 +272,8 @@ class AdvancedTemplate(AbstractTemplate):
             raise ValueError("Shape of given covariance matrix does not"
                              " match template shape.")
         self._cov_mat += cov_mat
+        self._corr_mat = cov2corr(self._cov_mat)
+        self._inv_corr_mat = np.linalg.inv(self._corr_mat)
         self._uncertainties = np.sqrt(np.diag(self._cov_mat))
 
     def plot_on(self, ax, **kwargs):
@@ -314,7 +331,14 @@ class AdvancedTemplate(AbstractTemplate):
     def corr_mat(self):
         """numpy.ndarray: The correlation matrix of the template errors.
         Shape is (`num_bins`, `num_bins`)."""
-        return cov2corr(self.cov_mat)
+        return self._corr_mat
+
+    @property
+    def inv_corr_mat(self):
+        """numpy.ndarray: The invers correlation matrix of the
+        template errors. Shape is (`num_bins`, `num_bins`)."""
+        return self._inv_corr_mat
+
 
     @property
     def uncertainties(self):
@@ -333,7 +357,7 @@ class AdvancedTemplate(AbstractTemplate):
     def values(self):
         return self.bin_fractions(self._param_nuissance_values) * self.yield_value
 
-    def bin_fractions(self, nuissance_param_values):
+    def bin_fractions(self, nuissance_parameters):
         """Calculates the per bin fraction :math:`f_i` of the template.
         This value is used to calculate the expected number of events
         per bin :math:`\\nu_i` as :math:`\\nu_i=f_i\cdot\\nu`, where
@@ -344,13 +368,19 @@ class AdvancedTemplate(AbstractTemplate):
         where :math:`\theta_j` are the nuissance parameters and
         :math:`\epsilon_j` are the relative uncertainties per bin.
 
+        Parameters
+        ----------
+        nuissance_parameters : numpy.ndarray
+            An array with values for the nuissance parameters.
+            Shape is (`num_bins`,)
+
         Returns
         -------
         numpy.ndarray
             Bin fractions of this template. Shape is (`num_bins`,).
         """
         per_bin_yields = self._hist.bin_counts * (
-                1 + nuissance_param_values * self.rel_uncertainties)
+                1 + nuissance_parameters * self.rel_uncertainties)
         return per_bin_yields / np.sum(per_bin_yields)
 
 
@@ -410,6 +440,20 @@ class AbstractCompositeTemplate(ABC):
         self._check_template_validity(template)
         self._templates[tid] = template
 
+    def set_yield(self, tid, value):
+        """Sets a new yield value for template with id=`tid`.
+
+        Parameters
+        ----------
+        tid : str
+            Id for the template which is used as key in the internal
+            map which stores the templates.
+        value : float
+            New yield value.
+        """
+        self._templates[tid].yield_value = value
+
+
     # -- magic methods --
 
     def __getitem__(self, tid):
@@ -468,10 +512,17 @@ class AbstractCompositeTemplate(ABC):
     def bin_width(self):
         """float: Bin width of the templates in this model."""
         return self.bin_edges[1] - self.bin_edges[0]
+
     @property
     def num_templates(self):
         """int: Number templates in this model."""
-        return self.num_simple_templates + self.num_advanced_templates
+        return len(self._templates)
+
+    @property
+    def yield_values(self):
+        """numpy.ndarray: An array with current yield values
+        of all templates."""
+        return np.array([template.yield_value for template in self._templates.values()])
 
     # -- abstract methods --
 
@@ -511,7 +562,6 @@ class AbstractCompositeTemplate(ABC):
 
         pass
 
-
     @abstractmethod
     def plot_on(self, ax, **kwargs):
         """Plots the templates as stacked histogram on a given
@@ -527,9 +577,104 @@ class AbstractCompositeTemplate(ABC):
         pass
 
 
+class SimpleCompositeTemplate(AbstractCompositeTemplate):
+    """An SimpleCompositeTemplateModel combines several instances
+    of SimpleTemplate models into one. It can create and store
+    template model instances. All templates in this model have the
+    same underlying histogram properties.
+
+    This container is useful to create Likelihood functions when
+    performing template fits, since it can calculate the per bin
+    fractions of all template as array (of shape
+    (`num_templates`, `num_bins`)). This array is then used to
+    calculate the expected number of events per bin.
+
+    Parameters
+    ----------
+    var_id : str
+        Identifier of the variable. Has to match a column in
+        the given `pandas.DataFrame`.
+    nbins : int
+        Number of bins for the template histogram.
+    limits : tuple of float
+        Defines the lower and upper limit of the histogram.
+    weight_id : str, optional
+        Optional string specifying the column name in `df` with
+        the event weights. Default is 'weight'.
+    """
+    def __init__(self, var_id, num_bins, limits, weight_id="weight"):
+        super().__init__(var_id, num_bins, limits, weight_id)
+
+    def create_template(self, tid, df, weight_id="weight"):
+        """Adds an instance of an AdvancedTemplateModel to the
+        container.
+
+        Parameters
+        ----------
+        tid : str
+            Id for the template which is used as key in the internal
+            map which stores the templates.
+        df : pandas.DataFrame
+            A `pandas.DataFrame` instance. The column specified by
+            `var_id` is used to construct the template histogram.
+        weight_id : str, optional
+            Optional string specifying the column name in `df` with
+            the event weights. Default is 'weight'.
+        """
+        logging.info(f"Creating template with id='{tid}'")
+        self._templates[tid] = SimpleTemplate(
+            tid,
+            self._vid,
+            self._num_bins,
+            self._limits,
+            df=df,
+            weight_id=weight_id
+        )
+
+    def bin_fractions(self):
+        """Evaluates all `bin_fractions` methods of all templates in this
+        container.
+
+
+        Returns
+        -------
+        numpy.ndarray
+            A 2D array of bin fractions. The first axis represents the
+            templates in this container and the second axis represents
+            the bins of each template.
+            Shape is (`num_templates`, `num_bins`).
+        """
+        fractions_per_template = np.array([
+            template.bin_fractions() for template in self._templates.values()
+        ])
+
+        logging.debug(f"Bin fractions:\n"
+                      f"{fractions_per_template}")
+
+        return fractions_per_template
+
+    def plot_on(self, ax, **kwargs):
+        """Plots the templates as stacked histogram on a given
+        axis. Also the total uncertainty is plotted as hatched bars.
+
+        Parameters
+        ----------
+        ax: matplotlib.axes.Axes
+            An instance of a matplotlib axis.
+        **kwargs
+            Additional keyword arguments used to change the plot.
+        """
+        bin_mids = [self.bin_mids for _ in range(self.num_templates)]
+        bin_counts = [template.values for template in self._templates.values()]
+        labels = [template.name for template in self._templates.values()]
+        ax.hist(bin_mids, weights=bin_counts, bins=self.bin_edges,
+                edgecolor='black', histtype="stepfilled", lw=0.5,
+                label=labels, stacked=True, **kwargs)
+
+
 class AdvancedCompositeTemplate(AbstractCompositeTemplate):
-    """A CompositeTemplateModel combines several template models
-    into one. It can create and store template model instances.
+    """An AdvancedCompositeTemplateModel combines several template
+    models into one. It can create and store template model instances.
     All templates in this model have the same underlying histogram
     properties.
 
@@ -555,28 +700,17 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
         the event weights. Default is 'weight'.
     """
     def __init__(self, var_id, num_bins, limits, weight_id="weight"):
+        super().__init__(var_id, num_bins, limits, weight_id)
 
-        super.__init__(var_id, num_bins, limits, weight_id)
-
-    def add_template(self, tid, template, ttype="advanced"):
-        """Adds an instance of an SimpleTemplateModel or AdvancedTemplateModel
-        to the container.
-
-        Parameters
-        ----------
-        tid : str
-            Id for the template which is used as key in the internal
-            map which stores the templates.
-        template : SimpleTemplate or AdvancedTemplate
-            Instance of a template model.
-        """
-        logging.info(f"Adding template with id='{tid}'")
-        self._check_template_validity(template)
-        self._templates[tid] = template
+    @property
+    def inv_corr_mats(self):
+        """list of numpy.ndarray: A list of inverse correlation
+        matrices for all templates."""
+        return [template.inv_corr_mat for template in self._templates.values()]
 
     def create_template(self, tid, df, weight_id="weight"):
-        """Adds an instance of an SimpleTemplateModel or AdvancedTemplateModel
-        to the container.
+        """Adds an instance of an AdvancedTemplateModel to the
+        container.
 
         Parameters
         ----------
@@ -602,7 +736,8 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
 
     def bin_fractions(self, nuissance_params):
         """Evaluates all `bin_fractions` methods of all templates in this
-        container.
+        container. Here, the bin fractions depend on so called nuissance
+        parameters which incorporate uncertainties on the template shape.
 
         Parameters
         ----------
