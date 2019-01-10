@@ -1,7 +1,6 @@
-from templatefitter.histogram import Histogram
-from templatefitter.template import TemplateModel, CompositeTemplateModel
-from templatefitter.nll import PoissonNLL
-from templatefitter.fitter import TemplateFitter,  ToyStudy
-
-from templatefitter.minimizer import Minimizer, Parameters
-
+from templatefitter.histogram import *
+from templatefitter.nll import *
+from templatefitter.fitter import *
+from templatefitter.template import *
+from templatefitter.minimizer import *
+from templatefitter.utility import *
