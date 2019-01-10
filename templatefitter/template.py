@@ -12,10 +12,13 @@ from abc import ABC, abstractmethod, abstractproperty
 from templatefitter import Histogram
 from templatefitter.utility import cov2corr
 
+__all__ = ["AbstractTemplate", "SimpleTemplate", "AdvancedTemplate",
+           "AbstractCompositeTemplate", "AdvancedCompositeTemplate",]
+
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-class AbstractTemplateModel(ABC):
+class AbstractTemplate(ABC):
     """Abstract base class for template models. This class implements
     the minimal methods and properties expected of a template model.
     The template is based on histogram of a given variable which
@@ -135,7 +138,7 @@ class AbstractTemplateModel(ABC):
         pass
 
 
-class SimpleTemplateModel(AbstractTemplateModel):
+class SimpleTemplate(AbstractTemplate):
     """This class implements an simple template model. This means that
     the only parameter of this model is the `yield`.
 
@@ -191,7 +194,7 @@ class SimpleTemplateModel(AbstractTemplateModel):
                 label=self.name, **kwargs)
 
 
-class AdvancedTemplateModel(AbstractTemplateModel):
+class AdvancedTemplate(AbstractTemplate):
     """This class implements an advanced template model. This
     means that the template model has a yield and nuissance
     parameters. The nuissance parameters allow to bin of the
