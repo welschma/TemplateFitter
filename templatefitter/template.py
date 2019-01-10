@@ -354,7 +354,180 @@ class AdvancedTemplate(AbstractTemplate):
         return per_bin_yields / np.sum(per_bin_yields)
 
 
-class CompositeTemplateModel:
+class AbstractCompositeTemplate(ABC):
+    """A CompositeTemplateModel combines several template models
+    into one. It can create and store template model instances.
+    All templates in this model have the same underlying histogram
+    properties.
+
+    This container is useful to create Likelihood functions when
+    performing template fits, since it can calculate the per bin
+    fractions of all template as array (of shape
+    (`num_templates`, `num_bins`)). This array is then used to
+    calculate the expected number of events per bin.
+
+    Parameters
+    ----------
+    var_id : str
+        Identifier of the variable. Has to match a column in
+        the given `pandas.DataFrame`.
+    nbins : int
+        Number of bins for the template histogram.
+    limits : tuple of float
+        Defines the lower and upper limit of the histogram.
+    weight_id : str, optional
+        Optional string specifying the column name in `df` with
+        the event weights. Default is 'weight'.
+    """
+
+    def __init__(self, var_id, num_bins, limits, weight_id="weight"):
+        self._vid = var_id
+        self._wid = weight_id
+
+        self._num_bins = num_bins
+        self._limits = limits
+        self._bin_edges = np.linspace(*limits, num_bins + 1)
+
+        self._templates = collections.OrderedDict()
+
+    # -- public methods --
+
+    def add_template(self, tid, template):
+        """Adds an instance of an SimpleTemplateModel or AdvancedTemplateModel
+        to the container.
+
+        Parameters
+        ----------
+        tid : str
+            Id for the template which is used as key in the internal
+            map which stores the templates.
+        template : SimpleTemplate or AdvancedTemplate
+            Instance of a template model.
+        ttype : str, optional
+            Specifies the template type. Possible values are 'simple'
+            and 'advanced'. Default is 'advanced'.
+        """
+        self._check_template_validity(template)
+        self._templates[tid] = template
+
+    # -- magic methods --
+
+    def __getitem__(self, tid):
+        """SimpleTemplateModel or AdvancedTemplateModel: The template
+        stored with id `tid`"""
+        return self._templates[tid]
+
+    # -- private methods --
+
+    def _check_template_validity(self, template):
+        """Checks, if the given template is compatible with
+        this container.
+
+        Parameters
+        ----------
+        template : AdvancedTemplate or SimpleTemplate
+            A template model instance.
+
+        Raises
+        ------
+        ValueError
+        """
+
+        eq_vid = (self._vid == template.variable)
+        eq_num_bins = (self._num_bins == template.num_bins)
+        eq_limits = (self._limits == template.limits)
+
+        if not(eq_vid and eq_num_bins and eq_limits):
+            raise ValueError("Given template is not compatible with"
+                             " this collection.")
+
+    # -- properties --
+
+    @property
+    def num_bins(self):
+        """int: Number of bins of the templates in this model."""
+        return self._num_bins
+
+    @property
+    def limits(self):
+        """tuple of float: Lower and upper limit of the templates in
+        this model."""
+        return self._limits
+
+    @property
+    def bin_edges(self):
+        """numpy.ndarray: Bin edges of the templates in this model."""
+        return self._bin_edges
+
+    @property
+    def bin_mids(self):
+        """numpy.ndarray: Bin mids of the templates in this model."""
+        return (self.bin_edges[1:] + self.bin_edges[:-1])/2
+
+    @property
+    def bin_width(self):
+        """float: Bin width of the templates in this model."""
+        return self.bin_edges[1] - self.bin_edges[0]
+    @property
+    def num_templates(self):
+        """int: Number templates in this model."""
+        return self.num_simple_templates + self.num_advanced_templates
+
+    # -- abstract methods --
+
+    @abstractmethod
+    def bin_fractions(self):
+        """Evaluates all `bin_fractions` methods of all templates in this
+        container.
+
+        Returns
+        -------
+        numpy.ndarray
+            A 2D array of bin fractions. The first axis represents the
+            templates in this container and the second axis represents
+            the bins of each template.
+            Shape is (`num_templates`, `num_bins`).
+        """
+
+        pass
+
+    @abstractmethod
+    def create_template(self, tid, df, weight_id="weight"):
+        """Adds an instance of an SimpleTemplateModel or AdvancedTemplateModel
+        to the container.
+
+        Parameters
+        ----------
+        tid : str
+            Id for the template which is used as key in the internal
+            map which stores the templates.
+        df : pandas.DataFrame
+            A `pandas.DataFrame` instance. The column specified by
+            `var_id` is used to construct the template histogram.
+        weight_id : str, optional
+            Optional string specifying the column name in `df` with
+            the event weights. Default is 'weight'.
+        """
+
+        pass
+
+
+    @abstractmethod
+    def plot_on(self, ax, **kwargs):
+        """Plots the templates as stacked histogram on a given
+        axis. Also the total uncertainty is plotted as hatched bars.
+
+        Parameters
+        ----------
+        ax: matplotlib.axes.Axes
+            An instance of a matplotlib axis.
+        **kwargs
+            Additional keyword arguments used to change the plot.
+        """
+        pass
+
+
+class AdvancedCompositeTemplate(AbstractCompositeTemplate):
     """A CompositeTemplateModel combines several template models
     into one. It can create and store template model instances.
     All templates in this model have the same underlying histogram
@@ -382,16 +555,8 @@ class CompositeTemplateModel:
         the event weights. Default is 'weight'.
     """
     def __init__(self, var_id, num_bins, limits, weight_id="weight"):
-        self._vid = var_id
-        self._wid = weight_id
 
-        self._num_bins = num_bins
-        self._limits = limits
-        self._bin_edges = np.linspace(*limits, num_bins + 1)
-
-        self._simple_templates = list()
-        self._advanced_templates = list()
-        self._templates = collections.OrderedDict()
+        super.__init__(var_id, num_bins, limits, weight_id)
 
     def add_template(self, tid, template, ttype="advanced"):
         """Adds an instance of an SimpleTemplateModel or AdvancedTemplateModel
@@ -402,18 +567,14 @@ class CompositeTemplateModel:
         tid : str
             Id for the template which is used as key in the internal
             map which stores the templates.
-        template : SimpleTemplateModel or AdvancedTemplateModel
+        template : SimpleTemplate or AdvancedTemplate
             Instance of a template model.
-        ttype : str, optional
-            Specifies the template type. Possible values are 'simple'
-            and 'advanced'. Default is 'advanced'.
         """
-        self._check_template_validity(template, ttype)
+        logging.info(f"Adding template with id='{tid}'")
+        self._check_template_validity(template)
         self._templates[tid] = template
-        self._register_template(tid, ttype)
 
-    def create_template(self, tid, df, weight_id="weight",
-                        ttype="advanced"):
+    def create_template(self, tid, df, weight_id="weight"):
         """Adds an instance of an SimpleTemplateModel or AdvancedTemplateModel
         to the container.
 
@@ -428,80 +589,16 @@ class CompositeTemplateModel:
         weight_id : str, optional
             Optional string specifying the column name in `df` with
             the event weights. Default is 'weight'.
-        ttype : str, optional
-            Specifies the template type. Possible values are 'simple'
-            and 'advanced'. Default is 'advanced'.
         """
-        logging.info(f"Creating template with id='{tid}' "
-                     f"and type='{ttype}'")
-        if ttype.lower() == "simple":
-            self._templates[tid] = SimpleTemplateModel(
-                tid,
-                self._vid,
-                self._num_bins,
-                self._limits,
-                df=df,
-                weight_id=weight_id
-            )
-        elif ttype.lower() == "advanced":
-            self._templates[tid] = AdvancedTemplateModel(
-                tid,
-                self._vid,
-                self._num_bins,
-                self._limits,
-                df=df,
-                weight_id=weight_id
-            )
-        else:
-            raise ValueError("Given template type is not compatible "
-                             "with this collection.")
-        self._register_template(ttype, tid)
-
-    def __getitem__(self, tid):
-        """SimpleTemplateModel or AdvancedTemplateModel: The template
-        stored with id `tid`"""
-        return self._templates[tid]
-
-    @property
-    def num_bins(self):
-        """int: Number of bins of the templates in this model."""
-        return self._num_bins
-
-    @property
-    def limits(self):
-        """tuple of float: Lower and upper limit of the templates in
-        this model."""
-        return self._limits
-
-    @property
-    def bin_edges(self):
-        """numpy.ndarray: Bin edges of the templates in this model."""
-        return self._bin_edges
-
-    @property
-    def bin_mids(self):
-        """numpy.ndarray: Bin mids of the templates in this model."""
-        return (self.bin_edges[1:] + self.bin_edges[:-1])/2
-
-    @property
-    def bin_width(self):
-        """float: Bin width of the templates in this model."""
-        return self.bin_edges[1] - self.bin_edges[0]
-
-    @property
-    def num_advanced_templates(self):
-        """int: Number of AdvancedTemplateModels in this model."""
-        return len(self._advanced_templates)
-
-    @property
-    def num_simple_templates(self):
-        """int: Number of SimpleTemplateModels in this model."""
-        return len(self._simple_templates)
-
-    @property
-    def num_templates(self):
-        """int: Number templates in this model."""
-        return self.num_simple_templates + self.num_advanced_templates
+        logging.info(f"Creating template with id='{tid}'")
+        self._templates[tid] = AdvancedTemplate(
+            tid,
+            self._vid,
+            self._num_bins,
+            self._limits,
+            df=df,
+            weight_id=weight_id
+        )
 
     def bin_fractions(self, nuissance_params):
         """Evaluates all `bin_fractions` methods of all templates in this
@@ -525,20 +622,16 @@ class CompositeTemplateModel:
         logging.debug(f"Calling 'bin_fractions' with nuissance parameters:\n"
                       f"{nuissance_params}")
 
-        nuiss_params_per_template = iter(np.split(nuissance_params, self.num_advanced_templates))
+        nuiss_params_per_template = iter(np.split(nuissance_params, self.num_templates))
 
-        fractions_per_template = list()
-
-        for tid, template in self._templates.items():
-            if tid in self._advanced_templates:
-                fractions_per_template.append(template.bin_fractions(next(nuiss_params_per_template)))
-            else:
-                fractions_per_template.append(template.bin_fractions())
+        fractions_per_template = np.array([
+            template.bin_fractions(next(nuiss_params_per_template)) for template in self._templates.values()
+        ])
 
         logging.debug(f"Bin fractions:\n"
-                      f"{np.array(fractions_per_template)}")
+                      f"{fractions_per_template}")
 
-        return np.array(fractions_per_template)
+        return fractions_per_template
 
     def plot_on(self, ax, **kwargs):
         """Plots the templates as stacked histogram on a given
@@ -558,7 +651,8 @@ class CompositeTemplateModel:
                 edgecolor='black', histtype="stepfilled", lw=0.5,
                 label=labels, stacked=True, **kwargs)
 
-        uncertainties_sq = np.array([self._templates[tid].uncertainties**2 for tid in self._advanced_templates])
+        uncertainties_sq = np.array(
+            [template.uncertainties**2 for template in self._templates.values])
         total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
         logging.debug(f"{total_uncertainty}")
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
@@ -567,56 +661,3 @@ class CompositeTemplateModel:
         ax.bar(x=bin_mids[0], height=2 * total_uncertainty, width=self.bin_width,
                bottom=total_bin_count - total_uncertainty, color='black', hatch="///////",
                fill=False, lw=0)
-
-    def _register_template(self, ttype, tid):
-        """Registers given template in this container.
-
-        Parameters
-        ----------
-        ttype : str
-            Specifies the template type. Possible values are 'simple'
-            and 'advanced'. Default is 'advanced'.
-        tid : str
-            Id for the template which is used as key in the internal
-            map which stores the templates.
-        """
-        if ttype.lower() == "simple":
-            self._simple_templates.append(tid)
-        elif ttype.lower() == "advanced":
-            self._advanced_templates.append(tid)
-        else:
-            raise ValueError("Given template type is not compatible "
-                             "with this collection.")
-
-    def _check_template_validity(self, template, ttype):
-        """Checks, if the given template is compatible with
-        this container.
-
-        Parameters
-        ----------
-        template : AdvancedTemplateModel or SimpleTemplateModel
-            A template model instance.
-        ttype : str
-            Specifies the template type. Possible values are 'simple'
-            and 'advanced'. Default is 'advanced'.
-
-        Raises
-        ------
-        ValueError
-        """
-
-        eq_vid = (self._vid == template.variable)
-        eq_num_bins = (self._num_bins == template.num_bins)
-        eq_limits = (self._limits == template.limits)
-
-        if ttype.lower()=="simple" and not isinstance(template, SimpleTemplateModel):
-            raise ValueError("Given template is not compatible with"
-                             " this collection.")
-
-        if ttype.lower()=="advanced" and not isinstance(template, AdvancedTemplateModel):
-            raise ValueError("Given template is not compatible with"
-                             " this collection.")
-
-        if not(eq_vid and eq_num_bins and eq_limits):
-            raise ValueError("Given template is not compatible with"
-                             " this collection.")
