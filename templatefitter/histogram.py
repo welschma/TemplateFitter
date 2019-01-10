@@ -1,13 +1,12 @@
 import numpy as np
 import scipy.stats
 
-
-class HistogramError(Exception):
-    pass
+__all__ = [
+    "Histogram"
+]
 
 
 # TODO deal with underflow and overflow bins
-# TODO deal with mathematical operation on histograms like scaling
 class Histogram:
     """Histogram container for data. Bins are of equal width.
 
@@ -81,7 +80,7 @@ class Histogram:
             weights = np.ones_like(data)
 
         if len(data) != len(weights):
-            raise HistogramError(
+            raise ValueError(
                 "Shape of data array does not match weight array."
             )
         self._bin_counts += scipy.stats.binned_statistic(
@@ -146,6 +145,10 @@ class Histogram:
     @property
     def bin_errors(self):
         return np.sqrt(self._bin_errors_sq)
+
+    @property
+    def bin_rel_errors(self):
+        return np.sqrt(self._bin_errors_sq)/self.bin_counts
 
     @property
     def bin_errors_sq(self):
