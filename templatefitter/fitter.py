@@ -9,6 +9,8 @@ __all__ = [
     "TemplateFitter",
     "ToyStudy"
 ]
+
+
 class TemplateFitter:
     """This class performs the parameter estimation and calculation
     of a profile likelihood based on a constructed negative log

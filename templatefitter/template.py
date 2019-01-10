@@ -358,14 +358,17 @@ class AdvancedTemplate(AbstractTemplate):
         return self.bin_fractions(self._param_nuissance_values) * self.yield_value
 
     def bin_fractions(self, nuissance_parameters):
-        """Calculates the per bin fraction :math:`f_i` of the template.
+        """
+        Calculates the per bin fraction :math:`f_i` of the template.
         This value is used to calculate the expected number of events
         per bin :math:`\\nu_i` as :math:`\\nu_i=f_i\cdot\\nu`, where
         :math:`\\nu` is the expected yield. The fractions are given as
 
-        :math:`f_i=\sum\limits_{i=1}^{n_{\mathrm{bins}}}\frac{\\nu_i(1+\theta_i\cdot\epsilon_i)}{\sum\limits_{j=1}^{n_{\mathrm{bins}}}\\nu_j(1+\theta_j\cdot\epsilon_j)}},`
+        .. math::
 
-        where :math:`\theta_j` are the nuissance parameters and
+            f_i=\sum\limits_{i=1}^{n_\mathrm{bins}} \\frac{\\nu_i(1+\\theta_i\cdot\epsilon_i)}{\sum_{j=1}^{n_\mathrm{bins}} \\nu_j (1+\\theta_j\cdot\epsilon_j)},
+
+        where :math:`\\theta_j` are the nuissance parameters and
         :math:`\epsilon_j` are the relative uncertainties per bin.
 
         Parameters

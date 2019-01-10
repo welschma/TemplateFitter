@@ -6,49 +6,26 @@ Template Creation
 Helpful classes to create templates used to fit monte carlo 
 distributions to measured data.
 
-Histogram
-#########
+Histogram Module
+################
 .. autoclass:: templatefitter.Histogram
     :members:
 
-Template
-########
-.. autoclass:: templatefitter.TemplateModel
+Template Module
+###############
+AbstractTemplate
+""""""""""""""""
+.. autoclass:: templatefitter.AbstractTemplate
     :members:
 
-TemplateCollection
-##################
-.. autoclass:: templatefitter.CompositeTemplateModel
+SimpleTemplate
+""""""""""""""
+.. autoclass:: templatefitter.SimpleTemplate
     :members:
+    :inherited-members:
 
-Likelihood Functions
---------------------
-Default Binned Negative Log Likelihood
-######################################
-.. autoclass:: templatefitter.PoissonNLL
+AdvancedTemplate
+""""""""""""""""
+.. autoclass:: templatefitter.AdvancedTemplate
     :members:
-    :special-members: __call__
-
-
-Fitting Functions
------------------
-ToyStudy
-########
-.. autoclass:: templatefitter.ToyStudy
-    :members:
-
-
-Minimizer
----------
-Parameters
-##########
-.. autoclass:: templatefitter.Parameters
-    :members:
-
-Minimizer
-#########
-.. autoclass:: templatefitter.Minimizer
-    :members:
-
-
-
+    :inherited-members:

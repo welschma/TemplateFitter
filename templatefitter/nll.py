@@ -43,6 +43,7 @@ class AbstractTemplateCostFunction(ABC):
     def __call__(self, x):
         pass
 
+
 class SimplePoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
     """A negative log likelihood (NLL) function for binned data using
     template histograms shapes as pdfs. The NLL is calculated as
@@ -97,6 +98,7 @@ class SimplePoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
         )
 
         return poisson_term
+
 
 class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
     """A negative log likelihood (NLL) function for binned data using
