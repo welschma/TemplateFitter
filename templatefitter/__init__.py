@@ -1,7 +1,6 @@
 from templatefitter.histogram import *
 from templatefitter.nll import *
-from templatefitter.fitter import TemplateFitter,  ToyStudy
+from templatefitter.fitter import *
 from templatefitter.template import *
-from templatefitter.minimizer import Minimizer, Parameters
-
-
+from templatefitter.minimizer import *
+from templatefitter.utility import *

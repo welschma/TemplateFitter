@@ -10,6 +10,11 @@ from scipy.optimize import minimize
 
 from templatefitter.utility import cov2corr
 
+__all__ = [
+    "Parameters",
+    "Minimizer",
+]
+
 
 class Parameters:
     """Containter for parameters used by the Minimizer class.
