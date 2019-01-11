@@ -10,12 +10,8 @@ pip3 install -e .
 
 ## TODO
 
-- [x] Histogram
-  - [x] create weighted histogram
-  - [x] rescaling
-- [x] Templates
-- [x] TemplateCollection
-  - [ ] Toy Dataset Creation
-- [ ] Likelihood function
-- [ ] Fitter
-  
+* make sure that there are no numerical problems with empty bins
+* get fit significance
+* some more goodnes of fit tests like chi-square or distributions of likelihood ratio
+* update toy study
+* introduce categories 
