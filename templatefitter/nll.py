@@ -4,6 +4,8 @@ the fit.
 """
 from abc import ABC, abstractmethod, abstractproperty
 
+import logging
+import itertools
 import numpy as np
 
 from scipy.linalg import block_diag
@@ -13,6 +15,7 @@ __all__ = [
     "AdvancedPoissonNegativeLogLikelihood"
 ]
 
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 class AbstractTemplateCostFunction(ABC):
     """Abstract base class for all cost function to estimate
@@ -22,20 +25,28 @@ class AbstractTemplateCostFunction(ABC):
     ----------
     hdata : Histogram
         Bin counts of the data histogram. Shape is (nbins,).
-    composite_template : Implementation of an AbstractCompositeTemplate
+    templates : Implementation of an AbstractCompositeTemplate
         A CompositeTemplate instance. The templates are used to
         extract the contribution from each process described by
         the templates to the measured data set.
     """
 
-    def __init__(self, hdata, composite_template):
+    def __init__(self, hdata, templates):
         self._data = hdata
-        self._templates = composite_template
+        self._templates = templates
+
+    # -- properties --
 
     @property
     def x0(self):
         """numpy.ndarray: Starting values for the minimization."""
         return self._templates.yield_values
+
+    # -- abstract properties
+
+    @abstractproperty
+    def param_names(self):
+        pass
 
     # -- abstract methods --
 
@@ -70,15 +81,19 @@ class SimplePoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
     ----------
     hdata : Histogram
         Bin counts of the data histogram. Shape is (nbins,).
-    composite_template : AdvancedCompositeTemplate
+    templates : AdvancedCompositeTemplate
         A CompositeTemplate instance. The templates are used to
         extract the contribution from each process described by
         the templates to the measured data set.
     """
 
-    def __init__(self, hdata, composite_template):
-        super().__init__(hdata, composite_template)
+    def __init__(self, hdata, templates):
+        super().__init__(hdata, templates)
         self._block_diag_inv_corr_mats = block_diag(*self._templates.inv_corr_mats)
+
+    @property
+    def param_names(self):
+        return [template.name + "_yield" for template in self._templates.template_ids]
 
     def __call__(self, x):
         """This function is called by the minimize method.
@@ -137,9 +152,24 @@ class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
         the templates to the measured data set.
     """
 
-    def __init__(self, hdata, composite_template):
-        super().__init__(hdata, composite_template)
+    def __init__(self, hdata, templates):
+        super().__init__(hdata, templates)
         self._block_diag_inv_corr_mats = block_diag(*self._templates.inv_corr_mats)
+
+    @property
+    def x0(self):
+        initial_yields = self._templates.yield_values
+        inital_nuissance_params = self._templates.nuissance_params_values
+
+        return np.concatenate((initial_yields, inital_nuissance_params))
+
+    @property
+    def param_names(self):
+        yields = ["yield_" + template_id for template_id in self._templates.template_ids]
+        nuissance_params = [["theta_" + template_name + f"_{i}" for i in range(self._templates.num_bins)]
+                            for template_name in self._templates.template_ids]
+        yields.extend(itertools.chain.from_iterable(nuissance_params))
+        return yields
 
     def __call__(self, x):
         """This function is called by the minimize method.
@@ -161,9 +191,7 @@ class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
             exp_evts_per_bin - self._data.bin_counts * np.log(exp_evts_per_bin)
                               )
 
-        gauss_term = 0.5*(nuiss_params@(
-                self._block_diag_inv_corr_mats@nuiss_params))
-
+        gauss_term = 0.5*(nuiss_params@self._block_diag_inv_corr_mats@nuiss_params)
         return poisson_term + gauss_term
 
 

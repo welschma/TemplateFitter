@@ -227,7 +227,8 @@ class Minimizer:
             x0=initial_param_values,
             args=additional_args,
             method="SLSQP",
-            constraints=constraints
+            constraints=constraints,
+            options={"disp": True}
         )
 
         self._success = opt_result.success

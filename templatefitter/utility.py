@@ -20,7 +20,7 @@ def cov2corr(cov):
     out : np.ndarray
         Correlation matrix. Shape is (n,n).
     """
-    Dinv = np.diag(1 / np.sqrt(np.diag(cov)))
+    Dinv = np.nan_to_num(np.diag(1 / np.sqrt(np.diag(cov))))
     return np.matmul(Dinv, np.matmul(cov, Dinv))
 
 

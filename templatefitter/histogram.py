@@ -138,6 +138,10 @@ class Histogram:
     def bin_counts(self):
         return self._bin_counts
 
+    @bin_counts.setter
+    def bin_counts(self, new_values):
+        self._bin_counts = new_values
+
     @property
     def bin_entries(self):
         return self._bin_entries
@@ -148,7 +152,9 @@ class Histogram:
 
     @property
     def bin_rel_errors(self):
-        return np.sqrt(self._bin_errors_sq)/self.bin_counts
+        rel_errors = np.sqrt(self._bin_errors_sq)/self.bin_counts
+        rel_errors[rel_errors==0] = 1e-7
+        return rel_errors
 
     @property
     def bin_errors_sq(self):

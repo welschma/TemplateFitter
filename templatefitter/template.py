@@ -6,6 +6,7 @@ import collections
 
 import logging
 import numpy as np
+import scipy.stats
 
 from abc import ABC, abstractmethod, abstractproperty
 
@@ -13,7 +14,7 @@ from templatefitter import Histogram
 from templatefitter.utility import cov2corr
 
 __all__ = ["AbstractTemplate", "SimpleTemplate", "AdvancedTemplate",
-           "AbstractCompositeTemplate", "AdvancedCompositeTemplate",]
+           "AbstractCompositeTemplate", "AdvancedCompositeTemplate", ]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -238,6 +239,7 @@ class AdvancedTemplate(AbstractTemplate):
         Optional string specifying the column name in `df` with
         the event weights. Default is 'weight'.
     """
+
     def __init__(self, name, var_id, nbins, limits, df, weight_id="weight"):
 
         super().__init__(name, var_id, nbins, limits, df, weight_id)
@@ -252,9 +254,11 @@ class AdvancedTemplate(AbstractTemplate):
         # the total covariance matrix is the sum of the statistical
         # covariance and any additional covariance matrix that has been
         # added
-        self._cov_mat = np.diag(self._hist.bin_errors_sq)
-        self._corr_mat = cov2corr(self._cov_mat)
-        self._inv_corr_mat = np.linalg.inv(self._corr_mat)
+        hist_errors = np.copy(self._hist.bin_errors_sq)
+        hist_errors[hist_errors == 0] = 1e-14
+        self._cov_mat = np.diag(hist_errors)
+        self._corr_mat = np.diag(np.ones(self.num_bins))
+        self._inv_corr_mat = np.diag(np.ones(self.num_bins))
         self._uncertainties = np.sqrt(np.diag(self._cov_mat))
 
     def add_cov_mat(self, cov_mat):
@@ -301,6 +305,8 @@ class AdvancedTemplate(AbstractTemplate):
 
     @nuissance_params_values.setter
     def nuissance_params_values(self, new_values):
+        logging.debug(new_values.shape)
+        logging.debug(self.nuissance_params_values.shape)
         if new_values.shape != self.nuissance_params_values.shape:
             raise ValueError("Shape of given nuissance parameter array"
                              " does not match template shape.")
@@ -339,19 +345,21 @@ class AdvancedTemplate(AbstractTemplate):
         template errors. Shape is (`num_bins`, `num_bins`)."""
         return self._inv_corr_mat
 
-
     @property
     def uncertainties(self):
         """numpy.ndarray: Total uncertainty per bin. This value is the
         product of the relative uncertainty per bin and the current bin
         values. Shape is (`num_bins`,)."""
-        return self.rel_uncertainties*self.values
+        return self.rel_uncertainties * self.values
 
     @property
     def rel_uncertainties(self):
         """numpy.ndarray: Relative uncertainty per bin. This value is fix.
         Shape is (`num_bins`,)."""
-        return self._uncertainties/self._hist.bin_counts
+        rel_uncertainties = np.divide(self._uncertainties, self._hist.bin_counts,
+                                      out=np.full_like(self._uncertainties, 1e-7),
+                                      where=self._hist.bin_counts != 0)
+        return rel_uncertainties
 
     @property
     def values(self):
@@ -384,7 +392,7 @@ class AdvancedTemplate(AbstractTemplate):
         """
         per_bin_yields = self._hist.bin_counts * (
                 1 + nuissance_parameters * self.rel_uncertainties)
-        return per_bin_yields / np.sum(per_bin_yields)
+        return np.nan_to_num(per_bin_yields / np.sum(per_bin_yields))
 
 
 class AbstractCompositeTemplate(ABC):
@@ -456,6 +464,37 @@ class AbstractCompositeTemplate(ABC):
         """
         self._templates[tid].yield_value = value
 
+    def reset_yield_values(self):
+        """Sets all yield values to the original values.
+        """
+        for template in self._templates.values():
+            template.reset_yield_value()
+
+    def generate_asimov_dataset(self):
+        """Generates an Asimov dataset from the given templates.
+        This is a binned dataset which corresponds to the current expectation values.
+        Since data takes only integer values, the template
+        expectation in each bin is rounded to the nearest integer
+
+        Returns
+        -------
+        asimov_dataset : numpy.ndarray
+            Shape is (`num_bins`)
+        """
+        return np.rint(self.bin_counts)
+
+    def generate_toy_dataset(self):
+        """Generates a toy dataset from the given templates.
+        This is a binned dataset where each bin is treated a
+        random number following a poisson distribution with
+        mean equal to the bin content of all templates.
+
+        Returns
+        -------
+        toy_dataset : numpy.ndarray
+            Shape is (`num_bins`)
+        """
+        return scipy.stats.poisson.rvs(self.bin_counts)
 
     # -- magic methods --
 
@@ -484,7 +523,7 @@ class AbstractCompositeTemplate(ABC):
         eq_num_bins = (self._num_bins == template.num_bins)
         eq_limits = (self._limits == template.limits)
 
-        if not(eq_vid and eq_num_bins and eq_limits):
+        if not (eq_vid and eq_num_bins and eq_limits):
             raise ValueError("Given template is not compatible with"
                              " this collection.")
 
@@ -509,12 +548,21 @@ class AbstractCompositeTemplate(ABC):
     @property
     def bin_mids(self):
         """numpy.ndarray: Bin mids of the templates in this model."""
-        return (self.bin_edges[1:] + self.bin_edges[:-1])/2
+        return (self.bin_edges[1:] + self.bin_edges[:-1]) / 2
 
     @property
     def bin_width(self):
         """float: Bin width of the templates in this model."""
         return self.bin_edges[1] - self.bin_edges[0]
+
+    @property
+    def bin_counts(self):
+        """numpy.ndarray: Sum over all template values in each
+        bin (bin counts of the composite template)."""
+        return np.sum(
+            np.array([template.values for template in self._templates.values()]),
+            axis=0
+        )
 
     @property
     def num_templates(self):
@@ -526,6 +574,22 @@ class AbstractCompositeTemplate(ABC):
         """numpy.ndarray: An array with current yield values
         of all templates."""
         return np.array([template.yield_value for template in self._templates.values()])
+
+    @yield_values.setter
+    def yield_values(self, new_yields):
+        if len(self.yield_values) != len(new_yields):
+            raise ValueError("You have to supply as many new yield "
+                             "values as there are templates in this"
+                             " container.")
+
+        for template, new_yield in zip(
+                self._templates.values(), iter(new_yields)):
+            template.yield_value = new_yield
+
+    @property
+    def template_ids(self):
+        """list of str: List of all template names."""
+        return [template.name for template in self._templates.values()]
 
     # -- abstract methods --
 
@@ -579,6 +643,10 @@ class AbstractCompositeTemplate(ABC):
         """
         pass
 
+    @abstractmethod
+    def update_parameters(self, new_parameters):
+        pass
+
 
 class SimpleCompositeTemplate(AbstractCompositeTemplate):
     """An SimpleCompositeTemplateModel combines several instances
@@ -605,6 +673,7 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
         Optional string specifying the column name in `df` with
         the event weights. Default is 'weight'.
     """
+
     def __init__(self, var_id, num_bins, limits, weight_id="weight"):
         super().__init__(var_id, num_bins, limits, weight_id)
 
@@ -651,9 +720,6 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
             template.bin_fractions() for template in self._templates.values()
         ])
 
-        logging.debug(f"Bin fractions:\n"
-                      f"{fractions_per_template}")
-
         return fractions_per_template
 
     def plot_on(self, ax, **kwargs):
@@ -673,6 +739,16 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
         ax.hist(bin_mids, weights=bin_counts, bins=self.bin_edges,
                 edgecolor='black', histtype="stepfilled", lw=0.5,
                 label=labels, stacked=True, **kwargs)
+
+    def update_parameters(self, new_parameters):
+        """Updates all template yields.
+
+        Parameters
+        ----------
+        new_parameters : np.ndarray
+            New yield values. Shape is (`num_templates`)
+        """
+        self.yield_values = new_parameters
 
 
 class AdvancedCompositeTemplate(AbstractCompositeTemplate):
@@ -702,14 +778,51 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
         Optional string specifying the column name in `df` with
         the event weights. Default is 'weight'.
     """
+
     def __init__(self, var_id, num_bins, limits, weight_id="weight"):
         super().__init__(var_id, num_bins, limits, weight_id)
+
+    @property
+    def num_nuissance_params(self):
+        """int: Number of nuissance parameters."""
+        return self.num_bins*self.num_templates
+
+    @property
+    def nuissance_params_values(self):
+        """numpy.ndarray: An array with current nuissance parameter values
+        of all templates."""
+        return np.concatenate([template.nuissance_params_values for template in self._templates.values()])
+
+    @nuissance_params_values.setter
+    def nuissance_params_values(self, new_values):
+        if self.num_nuissance_params != new_values.shape[0]:
+            raise ValueError("You have to supply as many new yield "
+                             "values as there are templates in this"
+                             " container.")
+
+        for template, new_value in zip(
+                self._templates.values(), np.split(new_values, self.num_templates)):
+            template.nuissance_params_values = new_value
 
     @property
     def inv_corr_mats(self):
         """list of numpy.ndarray: A list of inverse correlation
         matrices for all templates."""
         return [template.inv_corr_mat for template in self._templates.values()]
+
+    def set_nuissance_params(self, tid, values):
+        """Sets new values for the nuissance parameters of template
+         with id=`tid`.
+
+        Parameters
+        ----------
+        tid : str
+            Id for the template which is used as key in the internal
+            map which stores the templates.
+        values : numpy.ndarray
+            New yield value.
+        """
+        self._templates[tid].nuissance_params_values = values
 
     def create_template(self, tid, df, weight_id="weight"):
         """Adds an instance of an AdvancedTemplateModel to the
@@ -757,17 +870,11 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
             Shape is (`num_templates`, `num_bins`).
         """
 
-        logging.debug(f"Calling 'bin_fractions' with nuissance parameters:\n"
-                      f"{nuissance_params}")
-
         nuiss_params_per_template = iter(np.split(nuissance_params, self.num_templates))
 
         fractions_per_template = np.array([
             template.bin_fractions(next(nuiss_params_per_template)) for template in self._templates.values()
         ])
-
-        logging.debug(f"Bin fractions:\n"
-                      f"{fractions_per_template}")
 
         return fractions_per_template
 
@@ -790,12 +897,27 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
                 label=labels, stacked=True, **kwargs)
 
         uncertainties_sq = np.array(
-            [template.uncertainties**2 for template in self._templates.values])
+            [template.uncertainties ** 2 for template in self._templates.values()])
         total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
-        logging.debug(f"{total_uncertainty}")
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
-        logging.debug(f"{total_bin_count}")
 
         ax.bar(x=bin_mids[0], height=2 * total_uncertainty, width=self.bin_width,
                bottom=total_bin_count - total_uncertainty, color='black', hatch="///////",
                fill=False, lw=0)
+
+    def update_parameters(self, new_parameters):
+        """Updates all template yields and nuissance parameters.
+
+        Parameters
+        ----------
+        new_parameters : np.ndarray
+            New yield values. Shape is
+            (`num_templates` + `num_templates`*`num_bins`,).
+        """
+        yields = new_parameters[:self.num_templates]
+
+        nuissance_params = new_parameters[self.num_templates:]
+        logging.debug(nuissance_params.shape)
+        logging.debug(self.num_nuissance_params)
+        self.yield_values = yields
+        self.nuissance_params_values = nuissance_params
