@@ -46,9 +46,9 @@ def pearson_chi2_test(data, expectation, dof):
     float
         p-value.
     """
-    chi_sq = np.sum((data-expectation)**2/expectation)
+    chi_sq = np.sum((data - expectation) ** 2 / expectation)
     pval = quad(chi2.pdf, chi_sq, np.inf, args=(dof,))[0]
-    return chi_sq/dof, pval
+    return chi_sq / dof, pval
 
 
 def cowan_binned_likelihood_gof(data, expectation, dof):
@@ -86,6 +86,6 @@ def cowan_binned_likelihood_gof(data, expectation, dof):
     float
         p-value.
     """
-    chi_sq = 2*np.sum(data*np.log(data/expectation) + expectation - data)
+    chi_sq = 2 * np.sum(data * np.log(data / expectation) + expectation - data)
     pval = quad(chi2.pdf, chi_sq, np.inf, args=(dof,))[0]
-    return chi_sq/dof, pval
+    return chi_sq / dof, pval

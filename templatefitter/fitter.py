@@ -67,7 +67,8 @@ class TemplateFitter:
         return params
 
     @staticmethod
-    def _get_hesse_approx(param_id, param_estimates, hesse, fcn_min,profile_points):
+    def _get_hesse_approx(param_id, param_estimates, hesse, fcn_min,
+                          profile_points):
         """Calculates a gaussian approximation of the negative log
         likelihood function using the Hesse matrix.
 
@@ -354,4 +355,3 @@ class ToyStudy:
         self._is_fitted = False
         self._toy_results["parameters"] = list()
         self._toy_results["uncertainties"] = list()
-

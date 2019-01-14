@@ -22,29 +22,6 @@ class Histogram:
     weights: np.array, optional
         Weights for each entry in the histogram. If none are
         given, a weight of 1. will be assigned to each event.
-
-    Attributes
-    ----------
-    nbins : int
-        Number of bins in the histogram.
-    bin_edges :  np.ndarray
-        Bin edges of the histogram. Shape (nbins + 1,).
-    bin_width : float
-        Bin width of the histogram. 
-    bin_mids : np.ndarray
-        Bin mids of the histogram.
-    bin_counts : np.ndarray
-        Current bin counts in each bin.
-    bin_entries : np.ndarray
-        Current bin entries in each bin.
-    bin_errors : np.ndarray
-        Current bin errors in each bin.
-    limits : tuple of float
-        Lower and upper limit of the histogram range.
-    lower_limit : float
-        Lower  limit of the histogram range.
-    upper_limit : float
-        Upper  limit of the histogram range.
     """
 
     def __init__(self, nbins, limits, data=None, weights=None):
@@ -119,23 +96,28 @@ class Histogram:
 
     @property
     def nbins(self):
+        """int: Number of bins in the histogram."""
         return self._nbins
 
     @property
     def bin_edges(self):
+        """np.ndarray: Bin edges of the histogram. Shape (nbins + 1,)."""
         return self._bin_edges
 
     @property
     def bin_width(self):
+        """float: Bin width of the histogram."""
         return self.bin_edges[1] - self.bin_edges[0]
 
     @property
     def bin_mids(self):
+        """np.ndarray: Bin mids of the histogram."""
         edges = self.bin_edges
         return (edges[:-1] + edges[1:]) / 2.
 
     @property
     def bin_counts(self):
+        """np.ndarray: Current bin counts in each bin."""
         return self._bin_counts
 
     @bin_counts.setter
@@ -144,36 +126,43 @@ class Histogram:
 
     @property
     def bin_entries(self):
+        """ np.ndarray: Current bin entries in each bin."""
         return self._bin_entries
 
     @property
     def bin_errors(self):
+        """np.ndarray. Current bin errors in each bin."""
         return np.sqrt(self._bin_errors_sq)
 
     @bin_errors.setter
     def bin_errors(self, new_errors):
-        self._bin_errors_sq = new_errors**2
+        self._bin_errors_sq = new_errors ** 2
 
     @property
     def bin_rel_errors(self):
-        rel_errors = np.sqrt(self._bin_errors_sq)/self.bin_counts
-        rel_errors[rel_errors==0] = 1e-7
+        """np.ndarray. Current relative bin errors in each bin."""
+        rel_errors = np.sqrt(self._bin_errors_sq) / self.bin_counts
+        rel_errors[rel_errors == 0] = 1e-7
         return rel_errors
 
     @property
     def bin_errors_sq(self):
+        """np.ndarray. Current bin errors squared in each bin."""
         return self._bin_errors_sq
 
     @property
     def limits(self):
+        """tuple of float: Lower and upper limit of the histogram range."""
         return self._limits
 
     @property
     def lower_limit(self):
+        """float: Lower  limit of the histogram range."""
         return self._limits[0]
 
     @property
     def upper_limit(self):
+        """float: Upper  limit of the histogram range."""
         return self._limits[1]
 
     def __str__(self):

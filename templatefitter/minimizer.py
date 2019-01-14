@@ -11,6 +11,7 @@ from scipy.optimize import minimize
 from templatefitter.utility import cov2corr
 
 import logging
+
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
@@ -20,7 +21,7 @@ __all__ = [
 
 
 class Parameters:
-    """Containter for parameters used by the Minimizer class.
+    """Container for parameters used by the Minimizer class.
     Maps parameters described as arrays to names and indices.
     Values for parameter values, errors, covariance and correlation
     matrices are only available after they've been set by the
@@ -30,22 +31,8 @@ class Parameters:
     ----------
     names : list of str
         List of parameter names.
-
-    Attributes
-    ----------
-    names : list of str
-        List of parameter names.
-    nparams : int
-        Number of parameters.
-    values : np.ndarray
-        Parameter values. Shape is (`nparams`,).
-    errors : np.ndarray
-        Parameter errors. Shape is (`nparams`,).
-    covariance : np.ndarray
-        Parameter covariance matrix. Shape is (`nparams`, `nparams`).
-    correlation : np.ndarray
-        Parameter correlation matrix. Shape is (`nparams`, `nparams`).
     """
+
     def __init__(self, names):
         self._names = names
         self._nparams = len(names)
@@ -127,54 +114,62 @@ class Parameters:
 
     @property
     def names(self):
+        """list of str: List of parameter names."""
         return self._names
 
     @property
-    def nparams(self):
+    def num_params(self):
+        """int: Number of parameters."""
         return self._nparams
 
     @property
     def values(self):
+        """np.ndarray: Parameter values. Shape is (`num_params`,)."""
         return self._values
 
     @values.setter
     def values(self, new_values):
-        if not len(new_values) == self.nparams:
+        if not len(new_values) == self.num_params:
             raise ValueError("Number of parameter values must be equal"
                              " to number of parameters")
         self._values = new_values
 
     @property
     def errors(self):
+        """np.ndarray: Parameter errors. Shape is (`num_params`,)."""
         return self._errors
 
     @errors.setter
     def errors(self, new_errors):
-        if not len(new_errors) == self.nparams:
+        if not len(new_errors) == self.num_params:
             raise ValueError("Number of parameter errors must be equal"
                              " to number of parameters")
         self._errors = new_errors
 
     @property
     def covariance(self):
+        """np.ndarray: Parameter covariance matrix. Shape is
+        (`num_params`, `num_params`)."""
         return self._covariance
 
     @covariance.setter
     def covariance(self, new_covariance):
-        if not new_covariance.shape == (self.nparams, self.nparams):
+        if not new_covariance.shape == (self.num_params, self.num_params):
             raise ValueError("New covariance matrix shape must be equal"
                              " to (nparams, nparams)")
         self._covariance = new_covariance
 
     @property
     def correlation(self):
+        """np.ndarray: Parameter correlation matrix. Shape is
+         (`num_params`, `num_params`)."""
         return self._correlation
 
     @correlation.setter
     def correlation(self, new_correlation):
-        if not new_correlation.shape == (self.nparams, self.nparams):
+        if not new_correlation.shape == (self.num_params, self.num_params):
             raise ValueError("New correlation matrix shape must be equal"
-                             " to (nparams, nparams)")
+                             " to (num_params, num_params)")
         self._correlation = new_correlation
 
 
@@ -193,6 +188,7 @@ class Minimizer:
         A list of parameter names. This maps the entries from the `x`
         argument of `fcn` to strings.
     """
+
     def __init__(self, fcn, param_names):
         self._fcn = fcn
         self._params = Parameters(param_names)
@@ -215,7 +211,7 @@ class Minimizer:
         ----------
         initial_param_values : np.ndarray or list of floats
             Initial values for the parameters used as starting values.
-            Shape is (`nparams`,).
+            Shape is (`num_params`,).
         additional_args : tuple
             Tuple of additional arguemnts for the objective function.
         get_hesse : bool
@@ -241,7 +237,7 @@ class Minimizer:
         self._message = opt_result.message
 
         if not self._success:
-            raise RuntimeError(f"Minimization was not succesful.\n"
+            raise RuntimeError(f"Minimization was not successful.\n"
                                f"Status: {self._status}\n"
                                f"Message: {self._message}")
 
@@ -314,14 +310,14 @@ class Minimizer:
         fcn : callable
             Objective function of type ``fun(x, *args)``.
         x : np.ndarray
-            Parameters of `fcn` as np.ndarray of shape (`nparams`,).
+            Parameters of `fcn` as np.ndarray of shape (`num_params`,).
         args : tuple
             Additional arguments for `fcn`.
 
         Returns
         -------
         np.ndarray
-            Hesse matrix of `fcn` at point x. Shape is (`nparams`, `nparams`).
+            Hesse matrix of `fcn` at point x. Shape is (`num_params`, `num_params`).
         """
         return ndt.Hessian(fcn)(x, *args)
 
@@ -341,14 +337,14 @@ class Minimizer:
     @property
     def param_values(self):
         """np.ndarray: Estimated parameter values at the minimum of fcn.
-        Shape is (`nparams`).
+        Shape is (`num_params`).
         """
         return self._params.values
 
     @property
     def param_errors(self):
         """np.ndarray: Estimated parameter values at the minimum of fcn.
-        Shape is (`nparams`).
+        Shape is (`num_params`).
         """
         return self._params.errors
 
@@ -356,21 +352,20 @@ class Minimizer:
     def param_covariance(self):
         """np.ndarray: Estimated covariance matrix of the parameters.
         Calculated from the inverse of the Hesse matrix of fcn evaluated
-        at it's minimum. Shape is (`nparams`, `nparams`).
+        at it's minimum. Shape is (`num_params`, `num_params`).
         """
         return self._params.covariance
 
     @property
     def param_correlation(self):
         """np.ndarray: Estimated correlation matrix of the parameters.
-         Shape is (`nparams`, `nparams`).
+         Shape is (`num_params`, `num_params`).
          """
         return self._params.correlation
 
     @property
     def hesse(self):
         """np.ndarray: Estimated Hesse matrix of fcn at it's minimum.
-        Shape is (`nparams`, `nparams`).
+        Shape is (`num_params`, `num_params`).
         """
         return self._hesse
-

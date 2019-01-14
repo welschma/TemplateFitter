@@ -8,7 +8,7 @@ import logging
 import numpy as np
 import scipy.stats
 
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 from templatefitter import Histogram
 from templatefitter.utility import cov2corr
@@ -57,11 +57,11 @@ class AbstractTemplate(ABC):
         self._hist = Histogram(nbins, limits)
         self._hist.fill(df[var_id].values, df[weight_id].values)
 
-        # set initial yield paramter value equal to sum of all
+        # set initial yield parameter value equal to sum of all
         # weights in template histogram (error equal to sqrt of
         # sum of # all weights squared)
-        self._param_yield_value = np.sum(self._hist.bin_counts)
-        self._param_yield_error = np.sum(self._hist.bin_errors_sq)
+        self._yield_param_value = np.sum(self._hist.bin_counts)
+        self._yield_param_error = np.sum(self._hist.bin_errors_sq)
 
     # -- public methods --
 
@@ -69,7 +69,7 @@ class AbstractTemplate(ABC):
         """Resets the yield parameter to it's initial value  which is the
         sum of weighted bin counts in the template histogram.
         """
-        self._param_yield_value = np.sum(self._hist.bin_counts)
+        self._yield_param_value = np.sum(self._hist.bin_counts)
 
     # -- properties --
 
@@ -114,28 +114,28 @@ class AbstractTemplate(ABC):
     def yield_value(self):
         """float: Total yield of the template. By default this is the
         sum of weighted bin counts in the template histogram."""
-        return self._param_yield_value
+        return self._yield_param_value
 
     @yield_value.setter
     def yield_value(self, new_value):
-        self._param_yield_value = new_value
+        self._yield_param_value = new_value
 
     @property
     def yield_error(self):
         """float: Error of the yield parameter. By default it is not set
         in the beginning and has to be set manually."""
-        return self._param_yield_error
+        return self._yield_param_error
 
     @yield_error.setter
     def yield_error(self, new_error):
-        self._param_yield_error = new_error
+        self._yield_param_error = new_error
 
     @property
     def values(self):
         """numpy.ndarray: Current values of the template per bin. This is
         the product of the `bin_fractions` and the current value of the
         yield parameter."""
-        return self.bin_fractions() * self._param_yield_value
+        return self.bin_fractions() * self._yield_param_value
 
     # -- abstract methods --
 
@@ -247,8 +247,8 @@ class AdvancedTemplate(AbstractTemplate):
 
         # values and errors of nuissance parameter are np arrays
         # of shape (self.num_bins,). The pre fit value is zero.
-        self._param_nuissance_values = np.zeros(self.num_bins)
-        self._param_nuissance_errors = np.ones(self.num_bins)  # this error is meant in "standard deviations"
+        self._nuiss_param_values = np.zeros(self.num_bins)
+        self._nuiss_param_errors = np.ones(self.num_bins)  # this error is meant in "standard deviations"
 
         # statistical covariance matrix as diagonal matrix of the
         # sum of weights squared per bin
@@ -304,14 +304,14 @@ class AdvancedTemplate(AbstractTemplate):
     def nuiss_param_values(self):
         """numpy.ndarray: Current values of the nuissance parameters.
         If not set manually, the default values are equal to zero."""
-        return self._param_nuissance_values
+        return self._nuiss_param_values
 
     @nuiss_param_values.setter
     def nuiss_param_values(self, new_values):
         if new_values.shape != self.nuiss_param_values.shape:
             raise ValueError("Shape of given nuissance parameter array"
                              " does not match template shape.")
-        self._param_nuissance_values = new_values
+        self._nuiss_param_values = new_values
 
     @property
     def nuiss_param_errors(self):
@@ -319,14 +319,14 @@ class AdvancedTemplate(AbstractTemplate):
         These are give in standard deviations of the error they
         represent. If not set manually, the default values are equal
         to one."""
-        return self._param_nuissance_errors
+        return self._nuiss_param_errors
 
     @nuiss_param_errors.setter
     def nuiss_param_errors(self, new_errors):
         if new_errors.shape != self.nuiss_param_errors.shape:
             raise ValueError("Shape of given nuissance parameter array"
                              " does not match template shape.")
-        self._param_nuissance_errors = new_errors
+        self._nuiss_param_errors = new_errors
 
     @property
     def cov_mat(self):
@@ -369,7 +369,7 @@ class AdvancedTemplate(AbstractTemplate):
         """numpy.ndarray: Current values of the template per bin. This is
         the product of the `bin_fractions` and the current value of the
         yield parameter."""
-        return self.bin_fractions(self._param_nuissance_values) * self.yield_value
+        return self.bin_fractions(self._nuiss_param_values) * self.yield_value
 
     def bin_fractions(self, nuissance_parameters):
         """
@@ -810,7 +810,7 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
     @property
     def num_nuiss_params(self):
         """int: Number of nuissance parameters."""
-        return self.num_bins*self.num_templates
+        return self.num_bins * self.num_templates
 
     @property
     def nuiss_param_values(self):

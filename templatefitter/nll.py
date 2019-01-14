@@ -2,7 +2,7 @@
 functions which are used as const function to be minimized in
 the fit.
 """
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 import logging
 import itertools
@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 
 class AbstractTemplateCostFunction(ABC):
     """Abstract base class for all cost function to estimate
@@ -45,7 +46,8 @@ class AbstractTemplateCostFunction(ABC):
 
     # -- abstract properties
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def param_names(self):
         pass
 
@@ -93,7 +95,7 @@ class SimplePoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
 
     @property
     def param_names(self):
-        return [ "yield_" + template for template in self._templates.template_ids]
+        return ["yield_" + template for template in self._templates.template_ids]
 
     def __call__(self, x):
         """This function is called by the minimize method.
@@ -146,7 +148,7 @@ class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
     ----------
     hdata : Histogram
         Bin counts of the data histogram. Shape is (nbins,).
-    composite_template : AdvancedCompositeTemplate
+    templates : AdvancedCompositeTemplate
         A CompositeTemplate instance. The templates are used to
         extract the contribution from each process described by
         the templates to the measured data set.
@@ -185,14 +187,11 @@ class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
         nuiss_params = x[self._templates.num_templates:]
 
         exp_evts_per_bin = poi @ self._templates.bin_fractions(
-                nuiss_params
+            nuiss_params
         )
         poisson_term = np.sum(
             exp_evts_per_bin - self._data.bin_counts * np.log(exp_evts_per_bin)
-                              )
+        )
 
-        gauss_term = 0.5*(nuiss_params@self._block_diag_inv_corr_mats@nuiss_params)
+        gauss_term = 0.5 * (nuiss_params @ self._block_diag_inv_corr_mats @ nuiss_params)
         return poisson_term + gauss_term
-
-
-
