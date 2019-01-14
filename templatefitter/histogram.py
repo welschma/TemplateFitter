@@ -150,6 +150,10 @@ class Histogram:
     def bin_errors(self):
         return np.sqrt(self._bin_errors_sq)
 
+    @bin_errors.setter
+    def bin_errors(self, new_errors):
+        self._bin_errors_sq = new_errors**2
+
     @property
     def bin_rel_errors(self):
         rel_errors = np.sqrt(self._bin_errors_sq)/self.bin_counts
