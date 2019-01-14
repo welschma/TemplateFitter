@@ -106,15 +106,6 @@ class ToyStudy:
         A instance of the TemplateCollection class.
     nll
         A class used as negative log likelihood function.
-
-    Attributes
-    ----------
-    result_parameters :  np.ndarray
-        A 2D array of fit results for the parameters of the
-        likelihood.
-    result_uncertainties :  np.ndarray
-        A 2D array of uncertainties fo the fit results for
-        the parameters of the likelihood.
     """
 
     def __init__(self, templates, nll):
@@ -137,29 +128,78 @@ class ToyStudy:
             Number of toy experiments to run.
         """
 
-        for _ in range(n_exp):
-            fake_data = self._templates.generate_toy_data()
-            nll = self._nll(fake_data, self._templates)
+        self._reset_state()
 
-            fitter = TemplateFitter(nll)
-            result = fitter.do_fit()
+        for _ in tqdm.tqdm(range(n_exp), desc="Experiments Progess"):
+            htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
+            htoy_data.bin_counts = self._templates.generate_toy_dataset()
 
-            self._toy_results["parameters"].append(result.x)
+            fitter = TemplateFitter(htoy_data, self._templates, self._nll)
+            result = fitter.do_fit(update_templates=False)
 
-            uncertainties = np.sqrt(np.diag(result.covariance))
-            self._toy_results["uncertainties"].append(uncertainties)
+            self._toy_results["parameters"].append(result.values)
+            self._toy_results["uncertainties"].append(result.errors)
 
         self._is_fitted = True
 
+    def do_linearity_test(self, template_id, limits, n_points=10, n_exp=200):
+        """Performs a linearity test for the yield parameter of
+        the specified template.
 
+        Parameters
+        ----------
+        template_id : str
+            Name of the template for which the linearity test
+            should be performed.
+        limits : tuple of float
+            Range where the yield parameter will be tested in.
+        n_points : int, optional
+            Number of points to test in the given range. This
+            samples `n_points` in a linear space in the range
+            specified by `limits`. Default is 10.
+        n_exp : int, optional
+            Number of toy experiments to perform per point.
+            Default is 100.
+        """
+        param_fit_results = list()
+        param_fit_errors = list()
+        param_points = np.linspace(*limits, n_points)
+
+        for param_point in tqdm.tqdm(param_points, desc="Linearity Test Progress"):
+            self._reset_state()
+            self._templates.set_yield(template_id, param_point)
+
+            for _ in tqdm.tqdm(range(n_exp), desc="Experiment Progess"):
+                htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
+                htoy_data.bin_counts = self._templates.generate_toy_dataset()
+
+                fitter = TemplateFitter(htoy_data, self._templates, self._nll)
+                result = fitter.do_fit(update_templates=False, get_hesse=False)
+
+                self._toy_results["parameters"].append(result.values)
+                self._toy_results["uncertainties"].append(result.errors)
+
+            self._is_fitted = True
+
+            params, _ = self.get_toy_results(
+                self._templates.template_ids.index(template_id)
+            )
+            param_fit_results.append(np.mean(params))
+            param_fit_errors.append(np.std(params))
+
+        return param_points, param_fit_results, param_fit_errors
 
     @property
     def result_parameters(self):
+        """np.ndarray: A 2D array of fit results for the parameters
+        of the likelihood."""
         self._check_state()
         return np.array(self._toy_results["parameters"])
 
     @property
     def result_uncertainties(self):
+        """np.ndarray: A 2D array of uncertainties fo the fit
+        results for the parameters of the likelihood."""
         self._check_state()
         return np.array(self._toy_results["uncertainties"])
 
@@ -211,7 +251,7 @@ class ToyStudy:
         parameters, uncertainties = self.get_toy_results(param_index)
         # this works only for template yield, for nuissance parameters
         # i have change this
-        expected_yield = self._templates.yields[param_index]
+        expected_yield = self._templates.yield_values[param_index]
 
         return (parameters - expected_yield) / uncertainties
 
@@ -229,3 +269,13 @@ class ToyStudy:
                 "Toy experiments have not yet been performed. "
                 " Execute 'do_experiments' first."
             )
+
+    def _reset_state(self):
+        """
+        Resets state of the ToyStudy. This removes the toy results
+        and set the state to not fitted.
+        """
+        self._is_fitted = False
+        self._toy_results["parameters"] = list()
+        self._toy_results["uncertainties"] = list()
+
