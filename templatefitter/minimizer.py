@@ -10,6 +10,9 @@ from scipy.optimize import minimize
 
 from templatefitter.utility import cov2corr
 
+import logging
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 __all__ = [
     "Parameters",
     "Minimizer",
@@ -46,10 +49,10 @@ class Parameters:
     def __init__(self, names):
         self._names = names
         self._nparams = len(names)
-        self._values = None
-        self._errors = None
-        self._covariance = None
-        self._correlation = None
+        self._values = np.zeros(len(names))
+        self._errors = np.zeros(len(names))
+        self._covariance = np.zeros((len(names), len(names)))
+        self._correlation = np.zeros((len(names), len(names)))
 
     def get_param_value(self, param_id):
         """Returns value of parameter specified by `param_id`.
@@ -205,7 +208,7 @@ class Minimizer:
         self._hesse = None
         self._hesse_inv = None
 
-    def minimize(self, initial_param_values, additional_args=(), get_hesse=True):
+    def minimize(self, initial_param_values, additional_args=(), get_hesse=True, verbose=False):
         """Performs minimization of given objective function.
 
         Parameters
@@ -219,6 +222,8 @@ class Minimizer:
             If True, the Hesse matrix is estimated at the minimum
             of the objective function. This allows the calculation
             of parameter errors. Default is True.
+        verbose: bool
+            If True, a convergence message is printed. Default is False.
         """
         constraints = self._create_constraints(initial_param_values)
 
@@ -228,7 +233,7 @@ class Minimizer:
             args=additional_args,
             method="SLSQP",
             constraints=constraints,
-            options={"disp": True}
+            options={"disp": verbose}
         )
 
         self._success = opt_result.success
@@ -250,6 +255,8 @@ class Minimizer:
             self._params.correlation = cov2corr(self._hesse_inv)
             self._params.errors = np.sqrt(np.diag(self._hesse_inv))
 
+        return self.params
+
     def fix_param(self, param_id):
         """Fixes specified parameter to it's initial value given in
         `initial_param_values`.
@@ -262,6 +269,12 @@ class Minimizer:
         """
         param_index = self.params.param_id_to_index(param_id)
         self._fixed_params.append(param_index)
+
+    def release_params(self):
+        """
+        Removes all constraint specified.
+        """
+        self._fixed_params = list()
 
     def _create_constraints(self, initial_param_values):
         """Creates the dictionary used by scipy's minimize function
