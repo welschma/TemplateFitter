@@ -12,7 +12,8 @@ from scipy.linalg import block_diag
 
 __all__ = [
     "AbstractTemplateCostFunction",
-    "AdvancedPoissonNegativeLogLikelihood"
+    "AdvancedPoissonNegativeLogLikelihood",
+    "SimplePoissonNegativeLogLikelihood"
 ]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -89,11 +90,10 @@ class SimplePoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
 
     def __init__(self, hdata, templates):
         super().__init__(hdata, templates)
-        self._block_diag_inv_corr_mats = block_diag(*self._templates.inv_corr_mats)
 
     @property
     def param_names(self):
-        return [template.name + "_yield" for template in self._templates.template_ids]
+        return [ "yield_" + template for template in self._templates.template_ids]
 
     def __call__(self, x):
         """This function is called by the minimize method.
