@@ -159,7 +159,7 @@ class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
     @property
     def x0(self):
         initial_yields = self._templates.yield_values
-        inital_nuissance_params = self._templates.nuissance_params_values
+        inital_nuissance_params = self._templates.nuiss_param_values
 
         return np.concatenate((initial_yields, inital_nuissance_params))
 
