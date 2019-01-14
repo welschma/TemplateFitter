@@ -5,6 +5,10 @@ import numdifftools as ndt
 from templatefitter.minimizer import Minimizer
 from templatefitter.utility import cov2corr
 
+from templatefitter import Histogram
+
+import tqdm
+
 __all__ = [
     "TemplateFitter",
     "ToyStudy"
@@ -13,6 +17,8 @@ __all__ = [
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
+# TODO verify if optimization should be done twice where we use the result
+# TODO from the first minimization as starting values for the second one
 class TemplateFitter:
     """This class performs the parameter estimation and calculation
     of a profile likelihood based on a constructed negative log
@@ -37,53 +43,55 @@ class TemplateFitter:
         minimizer.minimize(self._nll.x0, get_hesse=get_hesse)
 
         if update_templates:
-            self._templates.update_parameters(minimizer.params)
+            self._templates.update_parameters(minimizer.param_values, minimizer.param_errors)
 
-        return minimizer._params
+        return minimizer.params
 
-    # def _get_hesse_approx(self, param_index, profile_points):
-    #
-    #     result = self._fit_result.x[param_index]
-    #     hesse_val = self._fit_result.hesse[param_index, param_index]
-    #     hesse_approx = (0.5 * hesse_val * (profile_points - result) ** 2 +
-    #                     self._fit_result.fun)
-    #
-    #     return hesse_approx
-    #
-    # def profile(self, param_index, method='SLSQP', n_points=100, sigma=2., subtract_min=True):
-    #     if self._fit_result is None:
-    #         self.do_fit()
-    #
-    #     result = self._fit_result.x[param_index]
-    #     uncertainty = np.sqrt(
-    #         self._fit_result.covariance[param_index, param_index]
-    #     )
-    #
-    #     profile_points = np.linspace(
-    #         result - sigma * uncertainty, result + sigma * uncertainty, n_points
-    #     )
-    #
-    #     profile_values = np.array([])
-    #
-    #     for point in profile_points:
-    #         constraint = {
-    #             "type": "eq",
-    #             "fun": lambda x: x[param_index] - point
-    #         }
-    #         profile_value = self.do_fit(
-    #             method=method,
-    #             constraints=constraint,
-    #             get_cov=False).fun
-    #
-    #         profile_values = np.append(profile_values, profile_value)
-    #
-    #     hesse_approx = self._get_hesse_approx(param_index, profile_points)
-    #
-    #     if subtract_min:
-    #         profile_values -= self._fit_result.fun
-    #         hesse_approx -= self._fit_result.fun
-    #
-    #     return profile_points, profile_values, hesse_approx
+    @staticmethod
+    def _get_hesse_approx(param_id, minimizer, profile_points):
+
+        result = minimizer.params.get_param_value(param_id)
+        param_index = minimizer.params.param_id_to_index(param_id)
+        hesse_val = minimizer.hesse[param_index, param_index]
+        hesse_approx = (0.5 * hesse_val * (profile_points - result) ** 2 +
+                        minimizer.fcn_min_val)
+
+        return hesse_approx
+
+    def profile(self, param_id,  n_points=100, sigma=2., subtract_min=True):
+
+        logging.info(f"Calculating profile likelihood for parameter: '{param_id}'")
+
+        minimizer = Minimizer(self._nll, self._nll.param_names)
+        minimizer.minimize(self._nll.x0, get_hesse=True)
+        minimum = minimizer.fcn_min_val
+
+        result, uncertainty = minimizer.params[param_id]
+
+        profile_points = np.linspace(
+            result - sigma * uncertainty, result + sigma * uncertainty, n_points
+        )
+
+        hesse_approx = self._get_hesse_approx(param_id, minimizer, profile_points)
+
+        profile_values = np.array([])
+
+        param_index = minimizer.params.param_id_to_index(param_id)
+
+        for point in tqdm.tqdm(profile_points, desc="Profile Progress"):
+            minimizer.release_params()
+            initial_values = self._nll.x0
+            initial_values[param_index] = point
+            minimizer.fix_param(param_id)
+            minimizer.minimize(initial_values, get_hesse=False)
+
+            profile_values = np.append(profile_values, minimizer.fcn_min_val)
+
+        if subtract_min:
+            profile_values -= minimum
+            hesse_approx -= minimum
+
+        return profile_points, profile_values, hesse_approx
 
 
 class ToyStudy:
