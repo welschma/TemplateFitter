@@ -14,7 +14,8 @@ from templatefitter import Histogram
 from templatefitter.utility import cov2corr
 
 __all__ = ["AbstractTemplate", "SimpleTemplate", "AdvancedTemplate",
-           "AbstractCompositeTemplate", "AdvancedCompositeTemplate", ]
+           "AbstractCompositeTemplate", "AdvancedCompositeTemplate",
+           "SimpleCompositeTemplate"]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -307,8 +308,6 @@ class AdvancedTemplate(AbstractTemplate):
 
     @nuiss_param_values.setter
     def nuiss_param_values(self, new_values):
-        logging.debug(new_values.shape)
-        logging.debug(self.nuiss_param_values.shape)
         if new_values.shape != self.nuiss_param_values.shape:
             raise ValueError("Shape of given nuissance parameter array"
                              " does not match template shape.")
@@ -594,6 +593,23 @@ class AbstractCompositeTemplate(ABC):
             template.yield_value = new_yield
 
     @property
+    def yield_errors(self):
+        """numpy.ndarray: An array with current errors of yield
+        values of all templates."""
+        return np.array([template.yield_error for template in self._templates.values()])
+
+    @yield_errors.setter
+    def yield_errors(self, new_yield_errors):
+        if len(self.yield_errors) != len(new_yield_errors):
+            raise ValueError("You have to supply as many new yield "
+                             "values as there are templates in this"
+                             " container.")
+
+        for template, new_yield in zip(
+                self._templates.values(), iter(new_yield_errors)):
+            template.yield_error = new_yield
+
+    @property
     def template_ids(self):
         """list of str: List of all template names."""
         return [template.name for template in self._templates.values()]
@@ -651,7 +667,7 @@ class AbstractCompositeTemplate(ABC):
         pass
 
     @abstractmethod
-    def update_parameters(self, new_parameters):
+    def update_parameters(self, new_parameters, new_errors):
         pass
 
 
@@ -672,7 +688,7 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
     var_id : str
         Identifier of the variable. Has to match a column in
         the given `pandas.DataFrame`.
-    nbins : int
+    num_bins : int
         Number of bins for the template histogram.
     limits : tuple of float
         Defines the lower and upper limit of the histogram.
@@ -747,7 +763,7 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
                 edgecolor='black', histtype="stepfilled", lw=0.5,
                 label=labels, stacked=True, **kwargs)
 
-    def update_parameters(self, new_parameters):
+    def update_parameters(self, new_parameters, new_errors):
         """Updates all template yields.
 
         Parameters
@@ -755,7 +771,9 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
         new_parameters : np.ndarray
             New yield values. Shape is (`num_templates`)
         """
+        # TODO write test to check if this works
         self.yield_values = new_parameters
+        self.yield_errors = new_errors
 
 
 class AdvancedCompositeTemplate(AbstractCompositeTemplate):
@@ -810,6 +828,23 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
         for template, new_value in zip(
                 self._templates.values(), np.split(new_values, self.num_templates)):
             template.nuiss_param_values = new_value
+
+    @property
+    def nuiss_param_errors(self):
+        """numpy.ndarray: An array with current errors on nuissance
+        parameter values of all templates."""
+        return np.concatenate([template.nuiss_param_errors for template in self._templates.values()])
+
+    @nuiss_param_errors.setter
+    def nuiss_param_errors(self, new_errors):
+        if self.num_nuiss_params != new_errors.shape[0]:
+            raise ValueError("You have to supply as many new yield "
+                             "values as there are templates in this"
+                             " container.")
+
+        for template, new_error in zip(
+                self._templates.values(), np.split(new_errors, self.num_templates)):
+            template.nuiss_param_errors = new_error
 
     @property
     def inv_corr_mats(self):
@@ -912,7 +947,7 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
                bottom=total_bin_count - total_uncertainty, color='black', hatch="///////",
                fill=False, lw=0)
 
-    def update_parameters(self, new_parameters):
+    def update_parameters(self, new_parameters, new_errors):
         """Updates all template yields and nuissance parameters.
 
         Parameters
@@ -922,9 +957,11 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
             (`num_templates` + `num_templates`*`num_bins`,).
         """
         yields = new_parameters[:self.num_templates]
+        nuiss_params = new_parameters[self.num_templates:]
+        yield_errors = new_errors[:self.num_templates]
+        nuiss_param_errors = new_errors[self.num_templates:]
 
-        nuissance_params = new_parameters[self.num_templates:]
-        logging.debug(nuissance_params.shape)
-        logging.debug(self.num_nuiss_params)
         self.yield_values = yields
-        self.nuiss_param_values = nuissance_params
+        self.nuiss_param_values = nuiss_params
+        self.yield_errors = yield_errors
+        self.nuiss_param_errors = nuiss_param_errors
