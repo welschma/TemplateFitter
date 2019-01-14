@@ -1,12 +1,9 @@
 import logging
 import numpy as np
-import numdifftools as ndt
 
 from templatefitter.minimizer import Minimizer
-from templatefitter.utility import cov2corr
-
 from templatefitter import Histogram
-
+from templatefitter import Parameters
 import tqdm
 
 __all__ = [
@@ -38,41 +35,120 @@ class TemplateFitter:
         self._fit_result = None
 
     def do_fit(self, update_templates=True, get_hesse=True):
+        """Performs maximum likelihood fit by minimizing the
+        provided negative log likelihoood function.
 
+        The log likelihood is minimized using the scipy's minimize
+        function with the 'SLSQP' method.
+
+        Parameters
+        ----------
+        update_templates : bool, optional
+            Wether to update the parameters of the given templates
+            or not. Default is True.
+        get_hesse : bool, optional
+            Wether to calculate the Hesse matrix in the estimated
+            minimum of the negative log likelihood function or not.
+            Can be computionally expensive if the number of parameters
+            in the likelihood is high. Default is True.
+
+        Returns
+        -------
+        estimated_parameters : Parameters
+            An instance of the Parameters class with the estimated
+            fit parameters.
+        """
         minimizer = Minimizer(self._nll, self._nll.param_names)
-        minimizer.minimize(self._nll.x0, get_hesse=get_hesse)
+        params = minimizer.minimize(self._nll.x0, get_hesse=get_hesse)
 
         if update_templates:
-            self._templates.update_parameters(minimizer.param_values, minimizer.param_errors)
+            self._templates.update_parameters(params.values, params.errors)
 
-        return minimizer.params
+        return params
 
     @staticmethod
-    def _get_hesse_approx(param_id, minimizer, profile_points):
+    def _get_hesse_approx(param_id, param_estimates, hesse, fcn_min,profile_points):
+        """Calculates a gaussian approximation of the negative log
+        likelihood function using the Hesse matrix.
 
-        result = minimizer.params.get_param_value(param_id)
-        param_index = minimizer.params.param_id_to_index(param_id)
-        hesse_val = minimizer.hesse[param_index, param_index]
+        Parameters
+        ----------
+        param_id : int or string
+            Parameter index or name.
+        param_estimates : Parameters
+            An instance of the Parameters class with the estimated
+            fit parameters.
+        hesse : np.ndarray
+            Hesse matrix. Shape is (`num_params`, `num_params`).
+        fcn_min : float
+            Estimated minimum of the neg log likelihood function.
+        profile_points : np.ndarray
+            Points where the estimate is evaluated. Shape is
+            (`num_points`,).
+
+        Returns
+        -------
+        np.ndarray
+            Hesse approximation of the negative log likelihood funciton.
+            Shape is (`num_points`,).
+
+        """
+
+        result = param_estimates.get_param_value(param_id)
+        param_index = param_estimates.param_id_to_index(param_id)
+        hesse_val = hesse[param_index, param_index]
         hesse_approx = (0.5 * hesse_val * (profile_points - result) ** 2 +
-                        minimizer.fcn_min_val)
+                        fcn_min)
 
         return hesse_approx
 
-    def profile(self, param_id,  n_points=100, sigma=2., subtract_min=True):
+    def profile(self, param_id, num_points=100, sigma=2., subtract_min=True):
+        """Performs a profile scan of the negative log likelihood
+        function for the specified parameter.
+
+        Parameters
+        ----------
+        param_id : int or string
+            Parameter index or name.
+        num_points : int
+            Number of points where the negative log likelhood is
+            minimized.
+        sigma : float
+            Defines the width of the scan. The scan range is given by
+            sigma*uncertainty of the given parameter.
+        subtract_min : bool
+            Wether to subtract the estimated minimum of the negative
+            log likelihood function or not. Default is True.
+
+        Returns
+        -------
+        np.ndarray
+            Scan points. Shape is (`num_points`,).
+        np.ndarray
+            Profile values. Shape is (`num_points`,).
+        np.ndarray
+            Hesse approximation. Shape is (`num_points`,).
+        """
 
         logging.info(f"Calculating profile likelihood for parameter: '{param_id}'")
 
         minimizer = Minimizer(self._nll, self._nll.param_names)
-        minimizer.minimize(self._nll.x0, get_hesse=True)
+        param_estimates = minimizer.minimize(self._nll.x0, get_hesse=True)
         minimum = minimizer.fcn_min_val
 
         result, uncertainty = minimizer.params[param_id]
 
         profile_points = np.linspace(
-            result - sigma * uncertainty, result + sigma * uncertainty, n_points
+            result - sigma * uncertainty, result + sigma * uncertainty, num_points
         )
 
-        hesse_approx = self._get_hesse_approx(param_id, minimizer, profile_points)
+        hesse_approx = self._get_hesse_approx(
+            param_id,
+            param_estimates,
+            minimizer.hesse,
+            minimum,
+            profile_points
+        )
 
         profile_values = np.array([])
 
