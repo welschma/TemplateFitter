@@ -1,10 +1,11 @@
 import logging
-import numpy as np
 
-from templatefitter.minimizer import Minimizer
-from templatefitter import Histogram
-from templatefitter import Parameters
+import numpy as np
 import tqdm
+
+
+from templatefitter import Histogram
+from templatefitter.minimizer import Minimizer
 
 __all__ = [
     "TemplateFitter",
@@ -54,20 +55,21 @@ class TemplateFitter:
 
         Returns
         -------
-        estimated_parameters : Parameters
-            An instance of the Parameters class with the estimated
-            fit parameters.
+        MinimizeResult
+            A namedtuple with the most important informations about the
+            minimization.
         """
         minimizer = Minimizer(self._nll, self._nll.param_names)
-        params = minimizer.minimize(self._nll.x0, get_hesse=get_hesse)
+        fit_result = minimizer.minimize(self._nll.x0, get_hesse=get_hesse)
 
         if update_templates:
-            self._templates.update_parameters(params.values, params.errors)
+            self._templates.update_parameters(fit_result.params.values,
+                                              fit_result.params.errors)
 
-        return params
+        return fit_result
 
     @staticmethod
-    def _get_hesse_approx(param_id, param_estimates, hesse, fcn_min,
+    def _get_hesse_approx(param_id, fit_result,
                           profile_points):
         """Calculates a gaussian approximation of the negative log
         likelihood function using the Hesse matrix.
@@ -76,13 +78,9 @@ class TemplateFitter:
         ----------
         param_id : int or string
             Parameter index or name.
-        param_estimates : Parameters
-            An instance of the Parameters class with the estimated
-            fit parameters.
-        hesse : np.ndarray
-            Hesse matrix. Shape is (`num_params`, `num_params`).
-        fcn_min : float
-            Estimated minimum of the neg log likelihood function.
+        fit_result : MinimizeResult
+            A namedtuple with the most important informations about the
+            minimization.
         profile_points : np.ndarray
             Points where the estimate is evaluated. Shape is
             (`num_points`,).
@@ -95,11 +93,11 @@ class TemplateFitter:
 
         """
 
-        result = param_estimates.get_param_value(param_id)
-        param_index = param_estimates.param_id_to_index(param_id)
-        hesse_val = hesse[param_index, param_index]
+        result = fit_result.params.get_param_value(param_id)
+        param_index = fit_result.params.param_id_to_index(param_id)
+        hesse_val = fit_result.hesse[param_index, param_index]
         hesse_approx = (0.5 * hesse_val * (profile_points - result) ** 2 +
-                        fcn_min)
+                        fit_result.fcn_min)
 
         return hesse_approx
 
@@ -134,20 +132,18 @@ class TemplateFitter:
         logging.info(f"Calculating profile likelihood for parameter: '{param_id}'")
 
         minimizer = Minimizer(self._nll, self._nll.param_names)
-        param_estimates = minimizer.minimize(self._nll.x0, get_hesse=True)
-        minimum = minimizer.fcn_min_val
+        result = minimizer.minimize(self._nll.x0, get_hesse=True)
+        minimum = result.fcn_min_val
 
-        result, uncertainty = minimizer.params[param_id]
+        param_val, param_unc = minimizer.params[param_id]
 
         profile_points = np.linspace(
-            result - sigma * uncertainty, result + sigma * uncertainty, num_points
+            param_val - sigma * param_unc, param_val + sigma * param_unc, num_points
         )
 
         hesse_approx = self._get_hesse_approx(
             param_id,
-            param_estimates,
-            minimizer.hesse,
-            minimum,
+            result,
             profile_points
         )
 
@@ -160,9 +156,9 @@ class TemplateFitter:
             initial_values = self._nll.x0
             initial_values[param_index] = point
             minimizer.fix_param(param_id)
-            minimizer.minimize(initial_values, get_hesse=False)
+            result = minimizer.minimize(initial_values, get_hesse=False)
 
-            profile_values = np.append(profile_values, minimizer.fcn_min_val)
+            profile_values = np.append(profile_values, result.fcn_min_val)
 
         if subtract_min:
             profile_values -= minimum
@@ -214,8 +210,8 @@ class ToyStudy:
             fitter = TemplateFitter(htoy_data, self._templates, self._nll)
             result = fitter.do_fit(update_templates=False)
 
-            self._toy_results["parameters"].append(result.values)
-            self._toy_results["uncertainties"].append(result.errors)
+            self._toy_results["parameters"].append(result.params.values)
+            self._toy_results["uncertainties"].append(result.params.errors)
 
         self._is_fitted = True
 
@@ -246,15 +242,15 @@ class ToyStudy:
             self._reset_state()
             self._templates.set_yield(template_id, param_point)
 
-            for _ in tqdm.tqdm(range(n_exp), desc="Experiment Progess"):
+            for _ in tqdm.tqdm(range(n_exp), desc="Experiment Progress"):
                 htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
                 htoy_data.bin_counts = self._templates.generate_toy_dataset()
 
                 fitter = TemplateFitter(htoy_data, self._templates, self._nll)
                 result = fitter.do_fit(update_templates=False, get_hesse=False)
 
-                self._toy_results["parameters"].append(result.values)
-                self._toy_results["uncertainties"].append(result.errors)
+                self._toy_results["parameters"].append(result.params.values)
+                self._toy_results["uncertainties"].append(result.params.errors)
 
             self._is_fitted = True
 

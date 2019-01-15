@@ -3,14 +3,14 @@ Implementation of a minimizer class based on the scipy.optimize.minimize
 function.
 """
 import functools
-import numpy as np
-import numdifftools as ndt
+import logging
+from collections import namedtuple
 
+import numdifftools as ndt
+import numpy as np
 from scipy.optimize import minimize
 
 from templatefitter.utility import cov2corr
-
-import logging
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -173,6 +173,26 @@ class Parameters:
         self._correlation = new_correlation
 
 
+MinimizeResult = namedtuple("MinimizeResult",
+                            ["fcn_min_val", "params", "hesse",
+                             "hesse_inv", "succes", "status", "message"])
+MinimizeResult.__doc__ = """NamedTuple storing the minimization results."""
+MinimizeResult.fcn_min_val.__doc__ = """float: Estimated minimum of the 
+objective function."""
+MinimizeResult.params.__doc__ = """Parameters: An instance of the parameters 
+class."""
+MinimizeResult.hesse.__doc__ = """np.ndarray: Hesse matrix of fcn at the 
+minimum."""
+MinimizeResult.hesse_inv.__doc__ = """np.ndarray: Inverse hesse matrix of fcn 
+at the minimum."""
+MinimizeResult.succes.__doc__ = """bool: Whether or not the optimizer exited 
+successfully."""
+MinimizeResult.status.__doc__ = """int: Termination status of the optimizer. Its value 
+depends on the underlying solver. Refer to message for details."""
+MinimizeResult.message.__doc__ = """str: Description of the cause of 
+the termination."""
+
+
 class Minimizer:
     """General wrapper class around scipy.optimize.minimize
     function. Allows mapping of parameter names to the array
@@ -220,6 +240,10 @@ class Minimizer:
             of parameter errors. Default is True.
         verbose: bool
             If True, a convergence message is printed. Default is False.
+
+        Returns
+        -------
+        MinimizeResult
         """
         constraints = self._create_constraints(initial_param_values)
 
@@ -236,10 +260,10 @@ class Minimizer:
         self._status = opt_result.status
         self._message = opt_result.message
 
-        if not self._success:
+        if not opt_result.success:
             raise RuntimeError(f"Minimization was not successful.\n"
-                               f"Status: {self._status}\n"
-                               f"Message: {self._message}")
+                               f"Status: {opt_result.status}\n"
+                               f"Message: {opt_result.message}")
 
         self._params.values = opt_result.x
         self._fcn_min_val = opt_result.fun
@@ -251,7 +275,15 @@ class Minimizer:
             self._params.correlation = cov2corr(self._hesse_inv)
             self._params.errors = np.sqrt(np.diag(self._hesse_inv))
 
-        return self.params
+        result = MinimizeResult(opt_result.fun,
+                                self._params,
+                                self._hesse,
+                                self._hesse_inv,
+                                self._success,
+                                self._status,
+                                self._message)
+
+        return result
 
     def fix_param(self, param_id):
         """Fixes specified parameter to it's initial value given in
