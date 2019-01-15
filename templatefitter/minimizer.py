@@ -4,10 +4,12 @@ function.
 """
 import functools
 import logging
+from abc import ABC, abstractmethod
 from collections import namedtuple
 
 import numdifftools as ndt
 import numpy as np
+from iminuit import Minuit
 from scipy.optimize import minimize
 
 from templatefitter.utility import cov2corr
@@ -16,7 +18,10 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
     "Parameters",
-    "Minimizer",
+    "AbstractMinizer",
+    "IMinuitMinimizer",
+    "ScipyMinimizer",
+    "minimizer_factory"
 ]
 
 
@@ -154,9 +159,6 @@ class Parameters:
 
     @covariance.setter
     def covariance(self, new_covariance):
-        if not new_covariance.shape == (self.num_params, self.num_params):
-            raise ValueError("New covariance matrix shape must be equal"
-                             " to (nparams, nparams)")
         self._covariance = new_covariance
 
     @property
@@ -167,47 +169,22 @@ class Parameters:
 
     @correlation.setter
     def correlation(self, new_correlation):
-        if not new_correlation.shape == (self.num_params, self.num_params):
-            raise ValueError("New correlation matrix shape must be equal"
-                             " to (num_params, num_params)")
         self._correlation = new_correlation
 
 
 MinimizeResult = namedtuple("MinimizeResult",
-                            ["fcn_min_val", "params", "hesse",
-                             "hesse_inv", "succes", "status", "message"])
+                            ["fcn_min_val", "params", "succes"])
+
 MinimizeResult.__doc__ = """NamedTuple storing the minimization results."""
 MinimizeResult.fcn_min_val.__doc__ = """float: Estimated minimum of the 
 objective function."""
 MinimizeResult.params.__doc__ = """Parameters: An instance of the parameters 
 class."""
-MinimizeResult.hesse.__doc__ = """np.ndarray: Hesse matrix of fcn at the 
-minimum."""
-MinimizeResult.hesse_inv.__doc__ = """np.ndarray: Inverse hesse matrix of fcn 
-at the minimum."""
 MinimizeResult.succes.__doc__ = """bool: Whether or not the optimizer exited 
 successfully."""
-MinimizeResult.status.__doc__ = """int: Termination status of the optimizer. Its value 
-depends on the underlying solver. Refer to message for details."""
-MinimizeResult.message.__doc__ = """str: Description of the cause of 
-the termination."""
 
 
-class Minimizer:
-    """General wrapper class around scipy.optimize.minimize
-    function. Allows mapping of parameter names to the array
-    entries used by scipy's `minimize` function.
-
-    Parameters
-    ----------
-    fcn : callable
-        Objective function to be minimized of type ``fun(x, *args)``
-        where `x` is an np.ndarray of shape (`n`,) and args is a tuple
-        of fixed parameters.
-    param_names : list of str
-        A list of parameter names. This maps the entries from the `x`
-        argument of `fcn` to strings.
-    """
+class AbstractMinizer(ABC):
 
     def __init__(self, fcn, param_names):
         self._fcn = fcn
@@ -224,6 +201,129 @@ class Minimizer:
         self._hesse = None
         self._hesse_inv = None
 
+    @abstractmethod
+    def minimize(self, initial_params, verbose=False):
+        pass
+
+    @abstractmethod
+    def fix_param(self, param_id):
+        pass
+
+    @abstractmethod
+    def release_params(self):
+        pass
+
+    @property
+    def fcn_min_val(self):
+        """str: Value of the objective function at it's estimated minimum.
+        """
+        return self._fcn_min_val
+
+    @property
+    def params(self):
+        """Parameters: Instance of the Parameter class. Stores the parameter values,
+        errors, covariance and correlation matrix.
+        """
+        return self._params
+
+    @property
+    def param_values(self):
+        """np.ndarray: Estimated parameter values at the minimum of fcn.
+        Shape is (`num_params`).
+        """
+        return self._params.values
+
+    @property
+    def param_errors(self):
+        """np.ndarray: Estimated parameter values at the minimum of fcn.
+        Shape is (`num_params`).
+        """
+        return self._params.errors
+
+    @property
+    def param_covariance(self):
+        """np.ndarray: Estimated covariance matrix of the parameters.
+        Calculated from the inverse of the Hesse matrix of fcn evaluated
+        at it's minimum. Shape is (`num_params`, `num_params`).
+        """
+        return self._params.covariance
+
+    @property
+    def param_correlation(self):
+        """np.ndarray: Estimated correlation matrix of the parameters.
+         Shape is (`num_params`, `num_params`).
+         """
+        return self._params.correlation
+
+    @property
+    def hesse(self):
+        """np.ndarray: Estimated Hesse matrix of fcn at it's minimum.
+        Shape is (`num_params`, `num_params`).
+        """
+        return self._hesse
+
+
+class IMinuitMinimizer(AbstractMinizer):
+
+    def __init__(self, fcn, param_names):
+        super().__init__(fcn, param_names)
+        self._fixed_params = [False for _ in self.params.names]
+
+    def minimize(self, initial_params, verbose=False, errordef=0.5, **kwargs):
+        m = Minuit.from_array_func(
+            self._fcn,
+            initial_params,
+            error=0.1*initial_params,
+            errordef=errordef,
+            fix=self._fixed_params,
+            name=self.params.names,
+            print_level=1 if verbose else 0,
+        )
+
+        fmin, _ = m.migrad()
+
+        self._fcn_min_val = m.fval
+        self._params.values = m.np_values()
+        self._params.errors = m.np_errors()
+        self._params.covariance = m.np_matrix()
+        self._params.correlation = m.np_matrix(correlation=True)
+
+        self._success = (fmin["is_valid"] and fmin["has_valid_parameters"] and
+                         fmin["has_covariance"])
+
+        if not self._success:
+            raise RuntimeError(f"Minimization was not successful.\n"
+                               f"{fmin}\n")
+
+        return MinimizeResult(m.fval, self._params, self._success)
+
+    def fix_param(self, param_id):
+        param_index = self.params.param_id_to_index(param_id)
+        self._fixed_params[param_index] = True
+
+    def release_params(self):
+        self._fixed_params = [False for _ in self.params.names]
+
+
+class ScipyMinimizer(AbstractMinizer):
+    """General wrapper class around scipy.optimize.minimize
+    function. Allows mapping of parameter names to the array
+    entries used by scipy's `minimize` function.
+
+    Parameters
+    ----------
+    fcn : callable
+        Objective function to be minimized of type ``fun(x, *args)``
+        where `x` is an np.ndarray of shape (`n`,) and args is a tuple
+        of fixed parameters.
+    param_names : list of str
+        A list of parameter names. This maps the entries from the `x`
+        argument of `fcn` to strings.
+    """
+
+    def __init__(self, fcn, param_names):
+        super().__init__(fcn, param_names)
+
     def minimize(self, initial_param_values, additional_args=(), get_hesse=True, verbose=False):
         """Performs minimization of given objective function.
 
@@ -233,7 +333,7 @@ class Minimizer:
             Initial values for the parameters used as starting values.
             Shape is (`num_params`,).
         additional_args : tuple
-            Tuple of additional arguemnts for the objective function.
+            Tuple of additional arguments for the objective function.
         get_hesse : bool
             If True, the Hesse matrix is estimated at the minimum
             of the objective function. This allows the calculation
@@ -277,11 +377,7 @@ class Minimizer:
 
         result = MinimizeResult(opt_result.fun,
                                 self._params,
-                                self._hesse,
-                                self._hesse_inv,
-                                self._success,
-                                self._status,
-                                self._message)
+                                self._success)
 
         return result
 
@@ -353,51 +449,11 @@ class Minimizer:
         """
         return ndt.Hessian(fcn)(x, *args)
 
-    @property
-    def fcn_min_val(self):
-        """str: Value of the objective function at it's estimated minimum.
-        """
-        return self._fcn_min_val
 
-    @property
-    def params(self):
-        """Parameters: Instance of the Parameter class. Stores the parameter values,
-        errors, covariance and correlation matrix.
-        """
-        return self._params
+def minimizer_factory(id, fcn, names):
+    available_minimizer = {
+        "scipy": ScipyMinimizer,
+        "iminuit": IMinuitMinimizer
+    }
 
-    @property
-    def param_values(self):
-        """np.ndarray: Estimated parameter values at the minimum of fcn.
-        Shape is (`num_params`).
-        """
-        return self._params.values
-
-    @property
-    def param_errors(self):
-        """np.ndarray: Estimated parameter values at the minimum of fcn.
-        Shape is (`num_params`).
-        """
-        return self._params.errors
-
-    @property
-    def param_covariance(self):
-        """np.ndarray: Estimated covariance matrix of the parameters.
-        Calculated from the inverse of the Hesse matrix of fcn evaluated
-        at it's minimum. Shape is (`num_params`, `num_params`).
-        """
-        return self._params.covariance
-
-    @property
-    def param_correlation(self):
-        """np.ndarray: Estimated correlation matrix of the parameters.
-         Shape is (`num_params`, `num_params`).
-         """
-        return self._params.correlation
-
-    @property
-    def hesse(self):
-        """np.ndarray: Estimated Hesse matrix of fcn at it's minimum.
-        Shape is (`num_params`, `num_params`).
-        """
-        return self._hesse
+    return available_minimizer[id.lower()](fcn, names)

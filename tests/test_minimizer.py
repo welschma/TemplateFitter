@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from templatefitter.minimizer import Minimizer
+from templatefitter.minimizer import ScipyMinimizer
 
 def rosen(x):
     """
@@ -29,7 +29,7 @@ class TestMinimizer(unittest.TestCase):
         self.param_names = ["x", "y"]
         self.fcn_min_val = 0.0
         self.fcn_min_param_vals = np.array([1., 1.])
-        self.minimizer = Minimizer(rosen, self.param_names)
+        self.minimizer = ScipyMinimizer(rosen, self.param_names)
 
     def test_init(self):
         self.assertListEqual(self.minimizer.params.names, self.param_names)
