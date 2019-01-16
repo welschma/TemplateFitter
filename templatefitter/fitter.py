@@ -168,6 +168,42 @@ class TemplateFitter:
 
         return profile_points, profile_values, hesse_approx
 
+    def get_significance(self, tid):
+        """Calculate significance for yield parameter of template
+        specified by `tid` using the profile likelihood ratio.
+
+        Parameters
+        ----------
+        tid : str
+            Id of component in the composite template for which the
+            significance of the yield parameter should be calculated.
+
+        Returns
+        -------
+        significance : float
+            Fit significance for the yield parameter in gaussian
+            standard deviations.
+        """
+
+        minimizer = minimizer_factory(self._minimizer_id, self._nll, self._nll.param_names)
+        fit_result = minimizer.minimize(self._nll.x0, verbose=True)
+
+        if fit_result.params["yield_" + tid][0] < 0:
+            return 0
+
+        # set signal of template specified by param_id to zero and profile the likelihood
+        self._templates.set_yield(tid, 0)
+
+        logging.debug(f"starting values for minimization: {self._nll.x0}")
+        minimizer = minimizer_factory(self._minimizer_id, self._nll, self._nll.param_names)
+        minimizer.fix_param("yield_" + tid)
+        profile_result = minimizer.minimize(self._nll.x0, verbose=True)
+        q0 = 2*(profile_result.fcn_min_val - fit_result.fcn_min_val)
+        logging.debug(f"q0: {q0}")
+        return np.sqrt(q0)
+
+
+
 
 class ToyStudy:
     """This class helps you to perform toy monte carlo studies
