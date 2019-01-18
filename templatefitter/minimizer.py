@@ -191,6 +191,7 @@ class AbstractMinizer(ABC):
         self._params = Parameters(param_names)
 
         self._fixed_params = list()
+        self._param_bounds = [(None, None) for _ in self._params.names]
 
         self._fcn_min_val = None
 
@@ -206,12 +207,28 @@ class AbstractMinizer(ABC):
         pass
 
     @abstractmethod
-    def fix_param(self, param_id):
+    def set_param_fixed(self, param_id):
         pass
 
     @abstractmethod
     def release_params(self):
         pass
+
+    def set_param_bounds(self, param_id, bounds):
+            """Sets parameter boundaries which constrain the minimization.
+
+            Parameters
+            ----------
+            param_id : int or str
+                Parameter identifier, which can be it's name or its index
+                in `param_names`.
+            bounds : tuple of float or None
+                A tuple specifying the lower and upper boundaries for the
+                given parameter. A value of `None` corresponds to no
+                boundary.
+            """
+            param_index = self.params.param_id_to_index(param_id)
+            self._param_bounds[param_index] = bounds
 
     @property
     def fcn_min_val(self):
@@ -277,6 +294,7 @@ class IMinuitMinimizer(AbstractMinizer):
             errordef=errordef,
             fix=self._fixed_params,
             name=self.params.names,
+            limit=self._param_bounds,
             print_level=1 if verbose else 0,
         )
 
@@ -297,7 +315,7 @@ class IMinuitMinimizer(AbstractMinizer):
 
         return MinimizeResult(m.fval, self._params, self._success)
 
-    def fix_param(self, param_id):
+    def set_param_fixed(self, param_id):
         param_index = self.params.param_id_to_index(param_id)
         self._fixed_params[param_index] = True
 
@@ -352,6 +370,7 @@ class ScipyMinimizer(AbstractMinizer):
             x0=initial_param_values,
             args=additional_args,
             method="SLSQP",
+            bounds=self._param_bounds,
             constraints=constraints,
             options={"disp": verbose}
         )
@@ -381,7 +400,7 @@ class ScipyMinimizer(AbstractMinizer):
 
         return result
 
-    def fix_param(self, param_id):
+    def set_param_fixed(self, param_id):
         """Fixes specified parameter to it's initial value given in
         `initial_param_values`.
 
