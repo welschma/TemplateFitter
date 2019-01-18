@@ -426,9 +426,8 @@ class AbstractCompositeTemplate(ABC):
         the event weights. Default is 'weight'.
     """
 
-    def __init__(self, var_id, num_bins, limits, weight_id="weight"):
+    def __init__(self, var_id, num_bins, limits):
         self._vid = var_id
-        self._wid = weight_id
 
         self._num_bins = num_bins
         self._limits = limits
