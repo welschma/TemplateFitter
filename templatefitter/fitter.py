@@ -203,8 +203,6 @@ class TemplateFitter:
         return np.sqrt(q0)
 
 
-
-
 class ToyStudy:
     """This class helps you to perform toy monte carlo studies
     using given templates and an implementation of a negative
@@ -219,9 +217,10 @@ class ToyStudy:
         A class used as negative log likelihood function.
     """
 
-    def __init__(self, templates, nll):
+    def __init__(self, templates, nll, minimizer_id):
         self._templates = templates
         self._nll = nll
+        self._mimizer_id = minimizer_id
 
         self._toy_results = {
             "parameters": [],
@@ -245,7 +244,8 @@ class ToyStudy:
             htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
             htoy_data.bin_counts = self._templates.generate_toy_dataset()
 
-            fitter = TemplateFitter(htoy_data, self._templates, self._nll)
+            fitter = TemplateFitter(htoy_data, self._templates, self._nll,
+                                    minimizer_id=self._mimizer_id)
             result = fitter.do_fit(update_templates=False)
 
             self._toy_results["parameters"].append(result.params.values)
@@ -284,7 +284,8 @@ class ToyStudy:
                 htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
                 htoy_data.bin_counts = self._templates.generate_toy_dataset()
 
-                fitter = TemplateFitter(htoy_data, self._templates, self._nll)
+                fitter = TemplateFitter(htoy_data, self._templates, self._nll,
+                                        minimizer_id=self._mimizer_id)
                 result = fitter.do_fit(update_templates=False, get_hesse=False)
 
                 self._toy_results["parameters"].append(result.params.values)
