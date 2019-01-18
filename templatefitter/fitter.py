@@ -157,7 +157,7 @@ class TemplateFitter:
             minimizer.release_params()
             initial_values = self._nll.x0
             initial_values[param_index] = point
-            minimizer.fix_param(param_id)
+            minimizer.set_param_fixed(param_id)
             loop_result = minimizer.minimize(initial_values, get_hesse=False)
 
             profile_values = np.append(profile_values, loop_result.fcn_min_val)
@@ -196,7 +196,7 @@ class TemplateFitter:
 
         logging.debug(f"starting values for minimization: {self._nll.x0}")
         minimizer = minimizer_factory(self._minimizer_id, self._nll, self._nll.param_names)
-        minimizer.fix_param("yield_" + tid)
+        minimizer.set_param_fixed("yield_" + tid)
         profile_result = minimizer.minimize(self._nll.x0, verbose=True)
         q0 = 2*(profile_result.fcn_min_val - fit_result.fcn_min_val)
         logging.debug(f"q0: {q0}")
