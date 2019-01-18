@@ -19,7 +19,6 @@ __all__ = ["AbstractTemplate", "SimpleTemplate", "AdvancedTemplate",
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-
 class AbstractTemplate(ABC):
     """Abstract base class for template models. This class implements
     the minimal methods and properties expected of a template model.
