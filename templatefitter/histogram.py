@@ -1,9 +1,7 @@
 import numpy as np
 import scipy.stats
 
-__all__ = [
-    "Histogram"
-]
+__all__ = ["Histogram"]
 
 
 # TODO deal with underflow and overflow bins
@@ -27,9 +25,7 @@ class Histogram:
     def __init__(self, nbins, limits, data=None, weights=None):
         self._nbins = nbins
         self._limits = limits
-        self._bin_edges = np.linspace(
-            self.lower_limit, self.upper_limit, nbins + 1
-        )
+        self._bin_edges = np.linspace(self.lower_limit, self.upper_limit, nbins + 1)
         self._bin_counts = np.zeros(nbins)
         self._bin_entries = np.zeros(nbins)
         self._bin_errors_sq = np.zeros(nbins)
@@ -57,28 +53,17 @@ class Histogram:
             weights = np.ones_like(data)
 
         if len(data) != len(weights):
-            raise ValueError(
-                "Shape of data array does not match weight array."
-            )
+            raise ValueError("Shape of data array does not match weight array.")
         self._bin_counts += scipy.stats.binned_statistic(
-            x=data,
-            values=weights,
-            statistic="sum",
-            bins=self._bin_edges
+            x=data, values=weights, statistic="sum", bins=self._bin_edges
         )[0]
 
         self._bin_entries += scipy.stats.binned_statistic(
-            x=data,
-            values=weights,
-            statistic="count",
-            bins=self._bin_edges
+            x=data, values=weights, statistic="count", bins=self._bin_edges
         )[0]
 
         self._bin_errors_sq += scipy.stats.binned_statistic(
-            x=data,
-            values=weights ** 2,
-            statistic="sum",
-            bins=self._bin_edges
+            x=data, values=weights ** 2, statistic="sum", bins=self._bin_edges
         )[0]
 
     def scale(self, c):
@@ -113,7 +98,7 @@ class Histogram:
     def bin_mids(self):
         """np.ndarray: Bin mids of the histogram."""
         edges = self.bin_edges
-        return (edges[:-1] + edges[1:]) / 2.
+        return (edges[:-1] + edges[1:]) / 2.0
 
     @property
     def bin_counts(self):
@@ -166,6 +151,8 @@ class Histogram:
         return self._limits[1]
 
     def __str__(self):
-        return (f"Bin Edges: {self.bin_edges}"
-                + f"\nBin Counts: {self.bin_counts}"
-                + f"\nBin Errors: {self.bin_errors}")
+        return (
+            f"Bin Edges: {self.bin_edges}"
+            + f"\nBin Counts: {self.bin_counts}"
+            + f"\nBin Errors: {self.bin_errors}"
+        )

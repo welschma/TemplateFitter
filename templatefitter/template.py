@@ -13,11 +13,17 @@ from abc import ABC, abstractmethod
 from templatefitter import Histogram
 from templatefitter.utility import cov2corr
 
-__all__ = ["AbstractTemplate", "SimpleTemplate", "AdvancedTemplate",
-           "AbstractCompositeTemplate", "AdvancedCompositeTemplate",
-           "SimpleCompositeTemplate"]
+__all__ = [
+    "AbstractTemplate",
+    "SimpleTemplate",
+    "AdvancedTemplate",
+    "AbstractCompositeTemplate",
+    "AdvancedCompositeTemplate",
+    "SimpleCompositeTemplate",
+]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 
 class AbstractTemplate(ABC):
     """Abstract base class for template models. This class implements
@@ -60,7 +66,7 @@ class AbstractTemplate(ABC):
         # weights in template histogram (error equal to sqrt of
         # sum of # all weights squared)
         self._yield_param_value = np.sum(self._hist.bin_counts)
-        self._yield_param_error = np.sum(self._hist.bin_errors_sq)
+        self._yield_param_error = np.sqrt(np.sum(self._hist.bin_errors_sq))
 
     # -- public methods --
 
@@ -69,6 +75,7 @@ class AbstractTemplate(ABC):
         sum of weighted bin counts in the template histogram.
         """
         self._yield_param_value = np.sum(self._hist.bin_counts)
+        self._yield_param_error = np.sqrt(np.sum(self._hist.bin_errors_sq))
 
     # -- properties --
 
@@ -156,7 +163,7 @@ class SimpleTemplate(AbstractTemplate):
     """This class implements an simple template model. This means that
     the only parameter of this model is the `yield`.
 
-    The `bin_fractions` method does not depend on nuissance paramenters
+    The `bin_fractions` method does not depend on nuissance parameters
     and therefore does not incorporate systematic errors.
 
     Parameters
@@ -204,8 +211,13 @@ class SimpleTemplate(AbstractTemplate):
         **kwargs
             Additional keyword arguments used to change the plot.
         """
-        ax.hist(self.bin_mids, weights=self.values, bins=self.bin_edges,
-                label=self.name, **kwargs)
+        ax.hist(
+            self.bin_mids,
+            weights=self.values,
+            bins=self.bin_edges,
+            label=self.name,
+            **kwargs,
+        )
 
 
 class AdvancedTemplate(AbstractTemplate):
@@ -247,7 +259,8 @@ class AdvancedTemplate(AbstractTemplate):
         # values and errors of nuissance parameter are np arrays
         # of shape (self.num_bins,). The pre fit value is zero.
         self._nuiss_param_values = np.zeros(self.num_bins)
-        self._nuiss_param_errors = np.ones(self.num_bins)  # this error is meant in "standard deviations"
+        # this error is meant in "standard deviations"
+        self._nuiss_param_errors = np.ones(self.num_bins)
 
         # statistical covariance matrix as diagonal matrix of the
         # sum of weights squared per bin
@@ -262,6 +275,12 @@ class AdvancedTemplate(AbstractTemplate):
         self._corr_mat = np.diag(np.ones(self.num_bins))
         self._inv_corr_mat = np.diag(np.ones(self.num_bins))
         self._uncertainties = np.sqrt(np.diag(self._cov_mat))
+        self._rel_uncertainties = np.divide(
+            self._uncertainties,
+            self._hist.bin_counts,
+            out=np.full_like(self._uncertainties, 1e-7),
+            where=self._hist.bin_counts != 0,
+        )
 
     def add_cov_mat(self, cov_mat):
         """Add a covariance matrix for a systematic error to this template.
@@ -275,12 +294,19 @@ class AdvancedTemplate(AbstractTemplate):
             Shape is (`num_bins`, `num_bins`)
         """
         if cov_mat.shape != self._cov_mat.shape:
-            raise ValueError("Shape of given covariance matrix does not"
-                             " match template shape.")
+            raise ValueError(
+                "Shape of given covariance matrix does not" " match template shape."
+            )
         self._cov_mat += cov_mat
         self._corr_mat = cov2corr(self._cov_mat)
         self._inv_corr_mat = np.linalg.inv(self._corr_mat)
         self._uncertainties = np.sqrt(np.diag(self._cov_mat))
+        self._rel_uncertainties = np.divide(
+            self._uncertainties,
+            self._hist.bin_counts,
+            out=np.full_like(self._uncertainties, 1e-7),
+            where=self._hist.bin_counts != 0,
+        )
 
     def plot_on(self, ax, **kwargs):
         """Plots the template as histogram on a given axis. Also the
@@ -293,11 +319,24 @@ class AdvancedTemplate(AbstractTemplate):
         **kwargs
             Additional keyword arguments used to change the plot.
         """
-        ax.hist(self.bin_mids, weights=self.values, bins=self.bin_edges,
-                edgecolor='black', histtype="stepfilled", **kwargs)
-        ax.bar(x=self.bin_mids, height=2 * self.uncertainties, width=self.bin_width,
-               bottom=self.values - self.uncertainties, color='black', hatch="///////",
-               fill=False, lw=0)
+        ax.hist(
+            self.bin_mids,
+            weights=self.values,
+            bins=self.bin_edges,
+            edgecolor="black",
+            histtype="stepfilled",
+            **kwargs,
+        )
+        ax.bar(
+            x=self.bin_mids,
+            height=2 * self.uncertainties,
+            width=self.bin_width,
+            bottom=self.values - self.uncertainties,
+            color="black",
+            hatch="///////",
+            fill=False,
+            lw=0,
+        )
 
     @property
     def nuiss_param_values(self):
@@ -308,8 +347,10 @@ class AdvancedTemplate(AbstractTemplate):
     @nuiss_param_values.setter
     def nuiss_param_values(self, new_values):
         if new_values.shape != self.nuiss_param_values.shape:
-            raise ValueError("Shape of given nuissance parameter array"
-                             " does not match template shape.")
+            raise ValueError(
+                "Shape of given nuissance parameter array"
+                " does not match template shape."
+            )
         self._nuiss_param_values = new_values
 
     @property
@@ -323,8 +364,10 @@ class AdvancedTemplate(AbstractTemplate):
     @nuiss_param_errors.setter
     def nuiss_param_errors(self, new_errors):
         if new_errors.shape != self.nuiss_param_errors.shape:
-            raise ValueError("Shape of given nuissance parameter array"
-                             " does not match template shape.")
+            raise ValueError(
+                "Shape of given nuissance parameter array"
+                " does not match template shape."
+            )
         self._nuiss_param_errors = new_errors
 
     @property
@@ -356,12 +399,7 @@ class AdvancedTemplate(AbstractTemplate):
     def rel_uncertainties(self):
         """numpy.ndarray: Relative uncertainty per bin. This value is fix.
         Shape is (`num_bins`,)."""
-        # TODO maybe make this computation only once when adding covariances
-        # this might save time
-        rel_uncertainties = np.divide(self._uncertainties, self._hist.bin_counts,
-                                      out=np.full_like(self._uncertainties, 1e-7),
-                                      where=self._hist.bin_counts != 0)
-        return rel_uncertainties
+        return self._rel_uncertainties
 
     @property
     def values(self):
@@ -396,7 +434,8 @@ class AdvancedTemplate(AbstractTemplate):
             Bin fractions of this template. Shape is (`num_bins`,).
         """
         per_bin_yields = self._hist.bin_counts * (
-                1 + nuissance_parameters * self.rel_uncertainties)
+            1 + nuissance_parameters * self.rel_uncertainties
+        )
         return np.nan_to_num(per_bin_yields / np.sum(per_bin_yields))
 
 
@@ -421,18 +460,13 @@ class AbstractCompositeTemplate(ABC):
         Number of bins for the template histogram.
     limits : tuple of float
         Defines the lower and upper limit of the histogram.
-    weight_id : str, optional
-        Optional string specifying the column name in `df` with
-        the event weights. Default is 'weight'.
     """
 
     def __init__(self, var_id, num_bins, limits):
         self._vid = var_id
-
         self._num_bins = num_bins
         self._limits = limits
         self._bin_edges = np.linspace(*limits, num_bins + 1)
-
         self._templates = collections.OrderedDict()
 
     # -- public methods --
@@ -523,13 +557,14 @@ class AbstractCompositeTemplate(ABC):
         ValueError
         """
 
-        eq_vid = (self._vid == template.variable)
-        eq_num_bins = (self._num_bins == template.num_bins)
-        eq_limits = (self._limits == template.limits)
+        eq_vid = self._vid == template.variable
+        eq_num_bins = self._num_bins == template.num_bins
+        eq_limits = self._limits == template.limits
 
         if not (eq_vid and eq_num_bins and eq_limits):
-            raise ValueError("Given template is not compatible with"
-                             " this collection.")
+            raise ValueError(
+                "Given template is not compatible with" " this collection."
+            )
 
     # -- properties --
 
@@ -564,8 +599,7 @@ class AbstractCompositeTemplate(ABC):
         """numpy.ndarray: Sum over all template values in each
         bin (bin counts of the composite template)."""
         return np.sum(
-            np.array([template.values for template in self._templates.values()]),
-            axis=0
+            np.array([template.values for template in self._templates.values()]), axis=0
         )
 
     @property
@@ -582,12 +616,13 @@ class AbstractCompositeTemplate(ABC):
     @yield_values.setter
     def yield_values(self, new_yields):
         if len(self.yield_values) != len(new_yields):
-            raise ValueError("You have to supply as many new yield "
-                             "values as there are templates in this"
-                             " container.")
+            raise ValueError(
+                "You have to supply as many new yield "
+                "values as there are templates in this"
+                " container."
+            )
 
-        for template, new_yield in zip(
-                self._templates.values(), iter(new_yields)):
+        for template, new_yield in zip(self._templates.values(), iter(new_yields)):
             template.yield_value = new_yield
 
     @property
@@ -599,12 +634,15 @@ class AbstractCompositeTemplate(ABC):
     @yield_errors.setter
     def yield_errors(self, new_yield_errors):
         if len(self.yield_errors) != len(new_yield_errors):
-            raise ValueError("You have to supply as many new yield "
-                             "values as there are templates in this"
-                             " container.")
+            raise ValueError(
+                "You have to supply as many new yield "
+                "values as there are templates in this"
+                " container."
+            )
 
         for template, new_yield in zip(
-                self._templates.values(), iter(new_yield_errors)):
+            self._templates.values(), iter(new_yield_errors)
+        ):
             template.yield_error = new_yield
 
     @property
@@ -690,13 +728,10 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
         Number of bins for the template histogram.
     limits : tuple of float
         Defines the lower and upper limit of the histogram.
-    weight_id : str, optional
-        Optional string specifying the column name in `df` with
-        the event weights. Default is 'weight'.
     """
 
-    def __init__(self, var_id, num_bins, limits, weight_id="weight"):
-        super().__init__(var_id, num_bins, limits, weight_id)
+    def __init__(self, var_id, num_bins, limits):
+        super().__init__(var_id, num_bins, limits)
 
     def create_template(self, tid, df, weight_id="weight"):
         """Adds an instance of an AdvancedTemplateModel to the
@@ -716,12 +751,7 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
         """
         logging.info(f"Creating template with id='{tid}'")
         self._templates[tid] = SimpleTemplate(
-            tid,
-            self._vid,
-            self._num_bins,
-            self._limits,
-            df=df,
-            weight_id=weight_id
+            tid, self._vid, self._num_bins, self._limits, df=df, weight_id=weight_id
         )
 
     def bin_fractions(self):
@@ -734,12 +764,11 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
         numpy.ndarray
             A 2D array of bin fractions. The first axis represents the
             templates in this container and the second axis represents
-            the bins of each template.
-            Shape is (`num_templates`, `num_bins`).
+            the bins of each template. Shape is (`num_templates`, `num_bins`).
         """
-        fractions_per_template = np.array([
-            template.bin_fractions() for template in self._templates.values()
-        ])
+        fractions_per_template = np.array(
+            [template.bin_fractions() for template in self._templates.values()]
+        )
 
         return fractions_per_template
 
@@ -757,9 +786,17 @@ class SimpleCompositeTemplate(AbstractCompositeTemplate):
         bin_mids = [self.bin_mids for _ in range(self.num_templates)]
         bin_counts = [template.values for template in self._templates.values()]
         labels = [template.name for template in self._templates.values()]
-        ax.hist(bin_mids, weights=bin_counts, bins=self.bin_edges,
-                edgecolor='black', histtype="stepfilled", lw=0.5,
-                label=labels, stacked=True, **kwargs)
+        ax.hist(
+            bin_mids,
+            weights=bin_counts,
+            bins=self.bin_edges,
+            edgecolor="black",
+            histtype="stepfilled",
+            lw=0.5,
+            label=labels,
+            stacked=True,
+            **kwargs,
+        )
 
     def update_parameters(self, new_parameters, new_errors):
         """Updates all template yields.
@@ -797,13 +834,10 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
         Number of bins for the template histogram.
     limits : tuple of float
         Defines the lower and upper limit of the histogram.
-    weight_id : str, optional
-        Optional string specifying the column name in `df` with
-        the event weights. Default is 'weight'.
     """
 
-    def __init__(self, var_id, num_bins, limits, weight_id="weight"):
-        super().__init__(var_id, num_bins, limits, weight_id)
+    def __init__(self, var_id, num_bins, limits):
+        super().__init__(var_id, num_bins, limits)
 
     @property
     def num_nuiss_params(self):
@@ -814,34 +848,44 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
     def nuiss_param_values(self):
         """numpy.ndarray: An array with current nuissance parameter values
         of all templates."""
-        return np.concatenate([template.nuiss_param_values for template in self._templates.values()])
+        return np.concatenate(
+            [template.nuiss_param_values for template in self._templates.values()]
+        )
 
     @nuiss_param_values.setter
     def nuiss_param_values(self, new_values):
         if self.num_nuiss_params != new_values.shape[0]:
-            raise ValueError("You have to supply as many new yield "
-                             "values as there are templates in this"
-                             " container.")
+            raise ValueError(
+                "You have to supply as many new yield "
+                "values as there are templates in this"
+                " container."
+            )
 
         for template, new_value in zip(
-                self._templates.values(), np.split(new_values, self.num_templates)):
+            self._templates.values(), np.split(new_values, self.num_templates)
+        ):
             template.nuiss_param_values = new_value
 
     @property
     def nuiss_param_errors(self):
         """numpy.ndarray: An array with current errors on nuissance
         parameter values of all templates."""
-        return np.concatenate([template.nuiss_param_errors for template in self._templates.values()])
+        return np.concatenate(
+            [template.nuiss_param_errors for template in self._templates.values()]
+        )
 
     @nuiss_param_errors.setter
     def nuiss_param_errors(self, new_errors):
         if self.num_nuiss_params != new_errors.shape[0]:
-            raise ValueError("You have to supply as many new yield "
-                             "values as there are templates in this"
-                             " container.")
+            raise ValueError(
+                "You have to supply as many new yield "
+                "values as there are templates in this"
+                " container."
+            )
 
         for template, new_error in zip(
-                self._templates.values(), np.split(new_errors, self.num_templates)):
+            self._templates.values(), np.split(new_errors, self.num_templates)
+        ):
             template.nuiss_param_errors = new_error
 
     @property
@@ -882,12 +926,7 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
         """
         logging.info(f"Creating template with id='{tid}'")
         self._templates[tid] = AdvancedTemplate(
-            tid,
-            self._vid,
-            self._num_bins,
-            self._limits,
-            df=df,
-            weight_id=weight_id
+            tid, self._vid, self._num_bins, self._limits, df=df, weight_id=weight_id
         )
 
     def bin_fractions(self, nuissance_params):
@@ -912,9 +951,12 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
 
         nuiss_params_per_template = iter(np.split(nuissance_params, self.num_templates))
 
-        fractions_per_template = np.array([
-            template.bin_fractions(next(nuiss_params_per_template)) for template in self._templates.values()
-        ])
+        fractions_per_template = np.array(
+            [
+                template.bin_fractions(next(nuiss_params_per_template))
+                for template in self._templates.values()
+            ]
+        )
 
         return fractions_per_template
 
@@ -932,18 +974,34 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
         bin_mids = [self.bin_mids for _ in range(self.num_templates)]
         bin_counts = [template.values for template in self._templates.values()]
         labels = [template.name for template in self._templates.values()]
-        ax.hist(bin_mids, weights=bin_counts, bins=self.bin_edges,
-                edgecolor='black', histtype="stepfilled", lw=0.5,
-                label=labels, stacked=True, **kwargs)
+        ax.hist(
+            bin_mids,
+            weights=bin_counts,
+            bins=self.bin_edges,
+            edgecolor="black",
+            histtype="stepfilled",
+            lw=0.5,
+            label=labels,
+            stacked=True,
+            **kwargs,
+        )
 
         uncertainties_sq = np.array(
-            [template.uncertainties ** 2 for template in self._templates.values()])
+            [template.uncertainties ** 2 for template in self._templates.values()]
+        )
         total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
 
-        ax.bar(x=bin_mids[0], height=2 * total_uncertainty, width=self.bin_width,
-               bottom=total_bin_count - total_uncertainty, color='black', hatch="///////",
-               fill=False, lw=0)
+        ax.bar(
+            x=bin_mids[0],
+            height=2 * total_uncertainty,
+            width=self.bin_width,
+            bottom=total_bin_count - total_uncertainty,
+            color="black",
+            hatch="///////",
+            fill=False,
+            lw=0,
+        )
 
     def update_parameters(self, new_parameters, new_errors):
         """Updates all template yields and nuissance parameters.
@@ -951,13 +1009,16 @@ class AdvancedCompositeTemplate(AbstractCompositeTemplate):
         Parameters
         ----------
         new_parameters : np.ndarray
-            New yield values. Shape is
+            New yield and nuissance parameter values. Shape is
+            (`num_templates` + `num_templates`*`num_bins`,).
+        new_parameters : np.ndarray
+            New yield and nuissance parameter errors. Shape is
             (`num_templates` + `num_templates`*`num_bins`,).
         """
-        yields = new_parameters[:self.num_templates]
-        nuiss_params = new_parameters[self.num_templates:]
-        yield_errors = new_errors[:self.num_templates]
-        nuiss_param_errors = new_errors[self.num_templates:]
+        yields = new_parameters[: self.num_templates]
+        nuiss_params = new_parameters[self.num_templates :]
+        yield_errors = new_errors[: self.num_templates]
+        nuiss_param_errors = new_errors[self.num_templates :]
 
         self.yield_values = yields
         self.nuiss_param_values = nuiss_params

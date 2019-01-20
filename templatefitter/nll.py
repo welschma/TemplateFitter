@@ -13,7 +13,7 @@ from scipy.linalg import block_diag
 __all__ = [
     "AbstractTemplateCostFunction",
     "AdvancedPoissonNegativeLogLikelihood",
-    "SimplePoissonNegativeLogLikelihood"
+    "SimplePoissonNegativeLogLikelihood",
 ]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -167,9 +167,16 @@ class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
 
     @property
     def param_names(self):
-        yields = ["yield_" + template_id for template_id in self._templates.template_ids]
-        nuissance_params = [["theta_" + template_name + f"_{i}" for i in range(self._templates.num_bins)]
-                            for template_name in self._templates.template_ids]
+        yields = [
+            "yield_" + template_id for template_id in self._templates.template_ids
+        ]
+        nuissance_params = [
+            [
+                "theta_" + template_name + f"_{i}"
+                for i in range(self._templates.num_bins)
+            ]
+            for template_name in self._templates.template_ids
+        ]
         yields.extend(itertools.chain.from_iterable(nuissance_params))
         return yields
 
@@ -183,15 +190,15 @@ class AdvancedPoissonNegativeLogLikelihood(AbstractTemplateCostFunction):
         float
             The value of the negative log likelihood at `x`.
         """
-        poi = x[:self._templates.num_templates]
-        nuiss_params = x[self._templates.num_templates:]
+        poi = x[: self._templates.num_templates]
+        nuiss_params = x[self._templates.num_templates :]
 
-        exp_evts_per_bin = poi @ self._templates.bin_fractions(
-            nuiss_params
-        )
+        exp_evts_per_bin = poi @ self._templates.bin_fractions(nuiss_params)
         poisson_term = np.sum(
             exp_evts_per_bin - self._data.bin_counts * np.log(exp_evts_per_bin)
         )
 
-        gauss_term = 0.5 * (nuiss_params @ self._block_diag_inv_corr_mats @ nuiss_params)
+        gauss_term = 0.5 * (
+            nuiss_params @ self._block_diag_inv_corr_mats @ nuiss_params
+        )
         return poisson_term + gauss_term

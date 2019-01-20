@@ -21,7 +21,7 @@ __all__ = [
     "AbstractMinizer",
     "IMinuitMinimizer",
     "ScipyMinimizer",
-    "minimizer_factory"
+    "minimizer_factory",
 ]
 
 
@@ -135,8 +135,9 @@ class Parameters:
     @values.setter
     def values(self, new_values):
         if not len(new_values) == self.num_params:
-            raise ValueError("Number of parameter values must be equal"
-                             " to number of parameters")
+            raise ValueError(
+                "Number of parameter values must be equal" " to number of parameters"
+            )
         self._values = new_values
 
     @property
@@ -147,8 +148,9 @@ class Parameters:
     @errors.setter
     def errors(self, new_errors):
         if not len(new_errors) == self.num_params:
-            raise ValueError("Number of parameter errors must be equal"
-                             " to number of parameters")
+            raise ValueError(
+                "Number of parameter errors must be equal" " to number of parameters"
+            )
         self._errors = new_errors
 
     @property
@@ -172,8 +174,7 @@ class Parameters:
         self._correlation = new_correlation
 
 
-MinimizeResult = namedtuple("MinimizeResult",
-                            ["fcn_min_val", "params", "succes"])
+MinimizeResult = namedtuple("MinimizeResult", ["fcn_min_val", "params", "succes"])
 
 MinimizeResult.__doc__ = """NamedTuple storing the minimization results."""
 MinimizeResult.fcn_min_val.__doc__ = """float: Estimated minimum of the 
@@ -185,11 +186,11 @@ successfully."""
 
 
 class AbstractMinizer(ABC):
-
     def __init__(self, fcn, param_names):
         self._fcn = fcn
         self._params = Parameters(param_names)
 
+        # this lists can be different for different minimizer implementations
         self._fixed_params = list()
         self._param_bounds = [(None, None) for _ in self._params.names]
 
@@ -198,9 +199,6 @@ class AbstractMinizer(ABC):
         self._success = None
         self._status = None
         self._message = None
-
-        self._hesse = None
-        self._hesse_inv = None
 
     @abstractmethod
     def minimize(self, initial_params, verbose=False):
@@ -215,20 +213,20 @@ class AbstractMinizer(ABC):
         pass
 
     def set_param_bounds(self, param_id, bounds):
-            """Sets parameter boundaries which constrain the minimization.
+        """Sets parameter boundaries which constrain the minimization.
 
-            Parameters
-            ----------
-            param_id : int or str
-                Parameter identifier, which can be it's name or its index
-                in `param_names`.
-            bounds : tuple of float or None
-                A tuple specifying the lower and upper boundaries for the
-                given parameter. A value of `None` corresponds to no
-                boundary.
-            """
-            param_index = self.params.param_id_to_index(param_id)
-            self._param_bounds[param_index] = bounds
+        Parameters
+        ----------
+        param_id : int or str
+            Parameter identifier, which can be it's name or its index
+            in `param_names`.
+        bounds : tuple of float or None
+            A tuple specifying the lower and upper boundaries for the
+            given parameter. A value of `None` corresponds to no
+            boundary.
+        """
+        param_index = self.params.param_id_to_index(param_id)
+        self._param_bounds[param_index] = bounds
 
     @property
     def fcn_min_val(self):
@@ -299,12 +297,12 @@ class IMinuitMinimizer(AbstractMinizer):
         self._params.covariance = m.np_matrix()
         self._params.correlation = m.np_matrix(correlation=True)
 
-        self._success = (fmin["is_valid"] and fmin["has_valid_parameters"] and
-                         fmin["has_covariance"])
+        self._success = (
+            fmin["is_valid"] and fmin["has_valid_parameters"] and fmin["has_covariance"]
+        )
 
         if not self._success:
-            raise RuntimeError(f"Minimization was not successful.\n"
-                               f"{fmin}\n")
+            raise RuntimeError(f"Minimization was not successful.\n" f"{fmin}\n")
 
         return MinimizeResult(m.fval, self._params, self._success)
 
@@ -335,7 +333,9 @@ class ScipyMinimizer(AbstractMinizer):
     def __init__(self, fcn, param_names):
         super().__init__(fcn, param_names)
 
-    def minimize(self, initial_param_values, additional_args=(), get_hesse=True, verbose=False):
+    def minimize(
+        self, initial_param_values, additional_args=(), get_hesse=True, verbose=False
+    ):
         """Performs minimization of given objective function.
 
         Parameters
@@ -433,7 +433,7 @@ class ScipyMinimizer(AbstractMinizer):
             constraints.append(
                 {
                     "type": "eq",
-                    "fun": lambda x: x[fixed_param] - initial_param_values[fixed_param]
+                    "fun": lambda x: x[fixed_param] - initial_param_values[fixed_param],
                 }
             )
 
@@ -462,9 +462,6 @@ class ScipyMinimizer(AbstractMinizer):
 
 
 def minimizer_factory(id, fcn, names):
-    available_minimizer = {
-        "scipy": ScipyMinimizer,
-        "iminuit": IMinuitMinimizer
-    }
+    available_minimizer = {"scipy": ScipyMinimizer, "iminuit": IMinuitMinimizer}
 
     return available_minimizer[id.lower()](fcn, names)

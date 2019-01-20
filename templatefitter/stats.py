@@ -2,13 +2,11 @@ import numpy as np
 from scipy.stats import chi2
 from scipy.integrate import quad
 
-__all__ = [
-    "pearson_chi2_test",
-    "cowan_binned_likelihood_gof"
-]
+__all__ = ["pearson_chi2_test", "cowan_binned_likelihood_gof"]
 
 
 # -- goodness of fit statistics --
+
 
 def pearson_chi2_test(data, expectation, dof):
     """Performs a Pearson :math:`\chi^2`-test.

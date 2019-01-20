@@ -1,9 +1,6 @@
 import numpy as np
 
-__all__ = [
-    "cov2corr",
-    "corr2cov"
-]
+__all__ = ["cov2corr", "corr2cov"]
 
 
 def cov2corr(cov):
