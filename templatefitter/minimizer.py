@@ -272,25 +272,18 @@ class AbstractMinizer(ABC):
          """
         return self._params.correlation
 
-    @property
-    def hesse(self):
-        """np.ndarray: Estimated Hesse matrix of fcn at it's minimum.
-        Shape is (`num_params`, `num_params`).
-        """
-        return self._hesse
-
 
 class IMinuitMinimizer(AbstractMinizer):
-
     def __init__(self, fcn, param_names):
         super().__init__(fcn, param_names)
         self._fixed_params = [False for _ in self.params.names]
 
     def minimize(self, initial_params, verbose=False, errordef=0.5, **kwargs):
+
         m = Minuit.from_array_func(
             self._fcn,
             initial_params,
-            error=0.1*initial_params,
+            error=0.1 * initial_params,
             errordef=errordef,
             fix=self._fixed_params,
             name=self.params.names,
@@ -372,7 +365,7 @@ class ScipyMinimizer(AbstractMinizer):
             method="SLSQP",
             bounds=self._param_bounds,
             constraints=constraints,
-            options={"disp": verbose}
+            options={"disp": verbose},
         )
 
         self._success = opt_result.success
@@ -380,23 +373,22 @@ class ScipyMinimizer(AbstractMinizer):
         self._message = opt_result.message
 
         if not opt_result.success:
-            raise RuntimeError(f"Minimization was not successful.\n"
-                               f"Status: {opt_result.status}\n"
-                               f"Message: {opt_result.message}")
+            raise RuntimeError(
+                f"Minimization was not successful.\n"
+                f"Status: {opt_result.status}\n"
+                f"Message: {opt_result.message}"
+            )
 
         self._params.values = opt_result.x
         self._fcn_min_val = opt_result.fun
 
         if get_hesse:
-            self._hesse = ndt.Hessian(self._fcn)(self._params.values, *additional_args)
-            self._hesse_inv = np.linalg.inv(self._hesse)
-            self._params.covariance = self._hesse_inv
-            self._params.correlation = cov2corr(self._hesse_inv)
-            self._params.errors = np.sqrt(np.diag(self._hesse_inv))
+            hesse = ndt.Hessian(self._fcn)(self._params.values, *additional_args)
+            self._params.covariance = np.linalg.inv(hesse)
+            self._params.correlation = cov2corr(self._params.covariance)
+            self._params.errors = np.sqrt(np.diag(self._params.covariance))
 
-        result = MinimizeResult(opt_result.fun,
-                                self._params,
-                                self._success)
+        result = MinimizeResult(opt_result.fun, self._params, self._success)
 
         return result
 
