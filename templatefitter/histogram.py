@@ -7,11 +7,11 @@ import numpy as np
 import scipy.stats
 
 __all__ = ["Histogram",
+           "AbstractHist",
            "Hist1d",
            "Hist2d"]
 
 
-# TODO deal with underflow and overflow bins
 class Histogram:
     """Histogram container for data. Bins are of equal width.
 
@@ -166,7 +166,7 @@ class Histogram:
         )
 
 
-class HistBase(ABC):
+class AbstractHist(ABC):
 
     def __init__(self):
         self._bin_edges = None
@@ -200,7 +200,7 @@ class HistBase(ABC):
         return self._num_bins
 
 
-class Hist1d(HistBase):
+class Hist1d(AbstractHist):
     """
     """
 
@@ -244,7 +244,7 @@ class Hist1d(HistBase):
         )[0]
 
 
-class Hist2d(HistBase):
+class Hist2d(AbstractHist):
     """
     """
 
