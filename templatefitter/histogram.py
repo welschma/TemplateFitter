@@ -196,6 +196,10 @@ class AbstractHist(ABC):
         return np.sqrt(self._bin_errors_sq)
 
     @property
+    def bin_errors_sq(self):
+        return self._bin_errors_sq
+
+    @property
     def num_bins(self):
         return self._num_bins
 
