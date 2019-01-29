@@ -189,6 +189,10 @@ class AbstractHist(ABC):
         return (self.bin_edges[1:] + self.bin_edges[:-1]) / 2
 
     @property
+    def bin_width(self):
+        return self.bin_edges[1] - self.bin_edges[0]
+
+    @property
     def bin_counts(self):
         return self._bin_counts
 
