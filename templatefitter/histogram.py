@@ -230,6 +230,24 @@ class Hist1d(AbstractHist):
         if data is not None:
             self.fill(data, weights)
 
+    @classmethod
+    def from_binned_data(cls, bin_edges, bin_counts, bin_errors=None):
+        """
+
+        Parameters
+        ----------
+        bin_edges
+        bin_counts
+        bin_errors
+        """
+        instance = cls(bin_edges)
+        instance._bin_counts = bin_counts
+
+        if bin_errors is None:
+            bin_errors = np.sqrt(bin_counts)
+
+        instance._bin_errors_sq = bin_errors**2
+
     def fill(self, data, weights=None):
         if weights is None:
             weights = np.ones_like(data)
