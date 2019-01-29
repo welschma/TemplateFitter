@@ -167,7 +167,8 @@ class Histogram:
 
 
 class AbstractHist(ABC):
-
+    """
+    """
     def __init__(self):
         self._bin_edges = None
         self._num_bins = None
