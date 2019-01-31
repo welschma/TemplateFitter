@@ -12,8 +12,6 @@ __all__ = ["TemplateFitter", "ToyStudy"]
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-# TODO verify if optimization should be done twice where we use the result
-# TODO from the first minimization as starting values for the second one
 class TemplateFitter:
     """This class performs the parameter estimation and calculation
     of a profile likelihood based on a constructed negative log
@@ -21,17 +19,20 @@ class TemplateFitter:
 
     Parameters
     ----------
-    nll : implementation of a AbstractNLL
-        An instance of a class which inherits from AbstractNLL.
-        This represents a negative log likelihood function.
+    hdata : Hist1d
+        Data histogram.
+    templates: StackedTemplate
     """
 
-    def __init__(self, hdata, templates, nll, minimizer_id):
+    def __init__(self, hdata, templates, minimizer_id):
         self._hdata = hdata
         self._templates = templates
-        self._nll = nll(hdata, templates)
+        self._nll = templates.create_nll(hdata)
         self._fit_result = None
         self._minimizer_id = minimizer_id
+
+        self._fixed_parameters = list()
+        self._bound_parameters = dict()
 
     def do_fit(self, update_templates=True, get_hesse=True, verbose=False):
         """Performs maximum likelihood fit by minimizing the
@@ -43,12 +44,12 @@ class TemplateFitter:
         Parameters
         ----------
         update_templates : bool, optional
-            Wether to update the parameters of the given templates
+            Whether to update the parameters of the given templates
             or not. Default is True.
         get_hesse : bool, optional
-            Wether to calculate the Hesse matrix in the estimated
+            Whether to calculate the Hesse matrix in the estimated
             minimum of the negative log likelihood function or not.
-            Can be computionally expensive if the number of parameters
+            Can be computationally expensive if the number of parameters
             in the likelihood is high. Default is True.
 
         Returns
@@ -60,6 +61,13 @@ class TemplateFitter:
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
+
+        for param_id in self._fixed_parameters:
+            minimizer.set_param_fixed(param_id)
+
+        for param_id, bounds in self._bound_parameters.items():
+            minimizer.set_param_bounds(param_id, bounds)
+
         fit_result = minimizer.minimize(
             self._nll.x0, get_hesse=get_hesse, verbose=verbose
         )
@@ -70,6 +78,31 @@ class TemplateFitter:
             )
 
         return fit_result
+
+    def set_parameter_fixed(self, param_id):
+        """Adds parameter to the fixed parameter list.
+
+        Parameters
+        ----------
+        param_id : str or int
+            Parameter identifier.
+        """
+        self._fixed_parameters.append(param_id)
+
+
+    def set_parameter_bounds(self, param_id, bounds):
+        """Adds parameter and its boundaries to the bound
+        parameter dictionary.
+
+        Parameters
+        ----------
+        param_id : str or int
+            Parameter identifier.
+        boudns : tuple of float
+            Lower and upper boundaries for this parameter.
+        """
+
+        self._bound_parameters[param_id] = bounds
 
     @staticmethod
     def _get_hesse_approx(param_id, fit_result, profile_points):

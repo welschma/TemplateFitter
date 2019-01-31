@@ -593,6 +593,28 @@ class StackedTemplate(AbstractTemplate):
         """
         return StackedTemplateNegLogLikelihood(dataset, self)
 
+    def update_parameters(self, new_parameters, new_errors):
+        """Updates all template yields and nuissance parameters.
+
+        Parameters
+        ----------
+        new_parameters : np.ndarray
+            New yield and nuissance parameter values. Shape is
+            (`num_templates` + `num_templates`*`num_bins`,).
+        new_parameters : np.ndarray
+            New yield and nuissance parameter errors. Shape is
+            (`num_templates` + `num_templates`*`num_bins`,).
+        """
+        yields = new_parameters[: self.num_templates]
+        nuiss_params = new_parameters[self.num_templates :]
+        yield_errors = new_errors[: self.num_templates]
+        nuiss_param_errors = new_errors[self.num_templates :]
+
+        self.yield_param_values = yields
+        self.nui_param_values = nuiss_params
+        self.yield_param_errors = yield_errors
+        self.nui_param_errors = nuiss_param_errors
+
     # -- properties
 
     @property
