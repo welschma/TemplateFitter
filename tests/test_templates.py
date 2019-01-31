@@ -6,6 +6,8 @@ import numpy as np
 
 from templatefitter.templates import Template, StackedTemplate, SimultaneousTemplate
 from templatefitter.utility import cov2corr
+from templatefitter.histogram import Hist1d
+
 
 class TestTemplate(unittest.TestCase):
     """Test suite fore Template class.
@@ -77,6 +79,24 @@ class TestTemplate(unittest.TestCase):
         np.testing.assert_array_equal(
             template._inv_corr,
             np.diag(np.ones(self.num_bins))
+        )
+
+    def test_fractions(self):
+        template = Template("test", self.var, self.num_bins, self.limits, self.df)
+
+        nui_params = np.array([0, 0, 0])
+        fractions_wo_nui_params = self.x_hist/np.sum(self.x_hist)
+        np.testing.assert_array_equal(
+            template.fractions(nui_params),
+                               fractions_wo_nui_params
+        )
+
+        nui_params = np.array([0.5, 0.5, 0.5])
+        rel_errors = self.x_errors/self.x_hist
+        fractions_w_nui_params = self.x_hist*(1 + nui_params*rel_errors)/np.sum(self.x_hist*(1 + nui_params*rel_errors))
+        np.testing.assert_array_equal(
+            template.fractions(nui_params),
+            fractions_w_nui_params
         )
 
     def test_template_init_state_with_empty_bins(self):
@@ -180,12 +200,100 @@ class TestTemplate(unittest.TestCase):
         )
 
 
-
-
-
 class TestStackedTemplate(unittest.TestCase):
-    pass
 
+    def setUp(self):
+        self.bkg = pd.DataFrame({
+            "x": np.array([0.5, 0.2, 0.4,
+                           1.2, 1.3, 1.4,
+                           2.4, 2.7, 2.8]),
+            "weight": np.array([2, 2, 1,
+                                1, 1, 2,
+                                2, 2, 2])
+        })
+
+        self.sig = pd.DataFrame({
+            "x": np.array([1.2, 1.3, 1.4,
+                           2.4, 2.7, 2.8]),
+            "weight": np.array([2, 2, 1,
+                                2, 2, 2])
+        })
+        self.limits = (0., 3.)
+        self.num_bins = 3
+        self.var = "x"
+        self.num_templates = 2
+
+        self.sig_hist = Hist1d(self.num_bins, self.limits, self.sig.x, self.sig.weight)
+        self.bkg_hist = Hist1d(self.num_bins, self.limits, self.bkg.x, self.bkg.weight)
+
+        self.st = StackedTemplate("test", "x", self.num_bins, self.limits)
+        self.sig_temp = Template("sig", "x", self.num_bins, self.limits, self.sig)
+        self.bkg_temp = Template("bkg", "x", self.num_bins, self.limits, self.bkg)
+        self.st.add_template("sig", self.sig_temp)
+        self.st.add_template("bkg", self.bkg_temp)
+
+    def test_add_template(self):
+        sig_temp = Template("sig", "x", self.num_bins, self.limits, self.sig)
+        bkg_temp = Template("bkg", "x", self.num_bins, self.limits, self.bkg)
+
+        stacked_temp = StackedTemplate("test", "x", self.num_bins, self.limits)
+        stacked_temp.add_template("sig", sig_temp)
+        stacked_temp.add_template("bkg", bkg_temp)
+
+        self.assertEqual(stacked_temp.num_templates, 2)
+        self.assertListEqual(stacked_temp.template_names, ["sig", "bkg"])
+
+    def test_add_not_valid_template(self):
+        stacked_temp = StackedTemplate("test", "x", self.num_bins, self.limits)
+
+        sig_temp = Template("sig", "x", 2, self.limits, self.sig)
+        self.assertRaises(ValueError, stacked_temp.add_template, "sig", sig_temp)
+
+        sig_temp = Template("sig", "x", self.num_bins, (-4, 6), self.sig)
+        self.assertRaises(ValueError, stacked_temp.add_template, "sig", sig_temp)
+
+    def test_create_template(self):
+        stacked_temp = StackedTemplate("test", "x", self.num_bins, self.limits)
+        stacked_temp.create_template("sig", self.sig)
+        stacked_temp.create_template("bkg", self.bkg)
+
+        self.assertEqual(stacked_temp.num_templates, 2)
+        self.assertListEqual(stacked_temp.template_names, ["sig", "bkg"])
+
+    def test_fractions(self):
+
+        nui_params = np.zeros(2*self.st.num_bins)
+        exp_fractions_wo_nui_params = np.array(
+            [
+                self.sig_temp.fractions(nui_params[:self.num_bins]),
+                self.bkg_temp.fractions(nui_params[self.num_bins:])
+            ]
+        )
+        np.testing.assert_array_equal(self.st.fractions(nui_params), exp_fractions_wo_nui_params)
+
+        nui_params = np.random.randn(2*self.num_bins)
+        exp_fractions_w_nui_params = np.array(
+            [
+                self.sig_temp.fractions(nui_params[:self.num_bins]),
+                self.bkg_temp.fractions(nui_params[self.num_bins:])
+            ]
+        )
+        np.testing.assert_array_equal(self.st.fractions(nui_params), exp_fractions_w_nui_params)
+
+    def test_values(self):
+        exp_values = self.sig_hist.bin_counts + self.bkg_hist.bin_counts
+        np.testing.assert_array_equal(self.st.values(), exp_values)
+
+    def test_errors(self):
+        exp_errors = np.sqrt(self.sig_hist.bin_errors_sq + self.bkg_hist.bin_errors_sq)
+        np.testing.assert_array_equal(self.st.errors(), exp_errors)
+
+    def test_param_values(self):
+        exp_yields = np.array([np.sum(self.sig_hist.bin_counts),
+                               np.sum(self.bkg_hist.bin_counts)])
+        np.testing.assert_array_equal(self.st.yield_param_values, exp_yields)
+        np.testing.assert_array_equal(self.st.nui_param_values,
+                                      np.zeros((self.num_templates, self.num_bins)))
 
 class TestSimultaneousTemplate(unittest.TestCase):
     pass
