@@ -10,6 +10,9 @@ import numpy as np
 
 from scipy.linalg import block_diag
 
+from templatefitter.histogram import Hist1d, AbstractHist
+from templatefitter.templates import AbstractTemplate, StackedTemplate
+
 __all__ = [
     "AbstractTemplateCostFunction",
     "StackedTemplateNegLogLikelihood",
@@ -24,36 +27,36 @@ class AbstractTemplateCostFunction(ABC):
 
     Parameters
     ----------
-    hdata : Histogram
+    histdataset : AbstractHist
         Bin counts of the data histogram. Shape is (nbins,).
-    templates : Implementation of an AbstractCompositeTemplate
+    templates : AbstractTemplate
         A CompositeTemplate instance. The templates are used to
         extract the contribution from each process described by
         the templates to the measured data set.
     """
 
-    def __init__(self, histdataset, templates):
+    def __init__(self, histdataset: AbstractHist, templates: AbstractTemplate):
         self._dataset = histdataset
         self._templates = templates
-
-    # -- properties --
-
-    @property
-    def x0(self):
-        """numpy.ndarray: Starting values for the minimization."""
-        return self._templates.yield_values
 
     # -- abstract properties
 
     @property
     @abstractmethod
+    def x0(self):
+        """numpy.ndarray: Starting values for the minimization."""
+        pass
+
+    @property
+    @abstractmethod
     def param_names(self):
+        """list of str: Parameter names. Used for convenience."""
         pass
 
     # -- abstract methods --
 
     @abstractmethod
-    def __call__(self, x):
+    def __call__(self, x: np.ndarray) -> float:
         pass
 
 
@@ -86,22 +89,22 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
 
     Parameters
     ----------
-    binned_dataset : Hist1d
+    binned_dataset: Hist1d
         Histogram of the dataset.
-    templates : StackedTemplate
+    templates: StackedTemplate
         A StackedTemplate instance. The templates are used to
         extract the contribution from each process described by
         the templates to the measured data set.
     """
 
-    def __init__(self, binned_dataset, templates):
+    def __init__(self,  binned_dataset: Hist1d, templates: StackedTemplate):
         super().__init__(binned_dataset, templates)
         self._block_diag_inv_corr_mats = block_diag(*self._templates.inv_corr_mats)
 
     @property
     def x0(self):
         initial_yields = self._templates.yield_param_values
-        initial_nui_params = self._templates.nui_param_values
+        initial_nui_params = self._templates.nui_param_values.reshape(-1)
 
         return np.concatenate((initial_yields, initial_nui_params))
 
@@ -120,7 +123,7 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
         yields.extend(itertools.chain.from_iterable(nui_params))
         return yields
 
-    def __call__(self, x):
+    def __call__(self, x: np.ndarray) -> float:
         """This function is called by the minimize method.
         `x` is an 1-D array with shape (n,). These are the parameters
         which are fitted.

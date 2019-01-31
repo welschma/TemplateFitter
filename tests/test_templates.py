@@ -4,7 +4,7 @@ import pandas as pd
 import scipy.stats
 import numpy as np
 
-from templatefitter.templates import Template, StackedTemplate, SimultaneousTemplate
+from templatefitter.templates import Template, StackedTemplate
 from templatefitter.utility import cov2corr
 from templatefitter.histogram import Hist1d
 
@@ -294,6 +294,81 @@ class TestStackedTemplate(unittest.TestCase):
         np.testing.assert_array_equal(self.st.yield_param_values, exp_yields)
         np.testing.assert_array_equal(self.st.nui_param_values,
                                       np.zeros((self.num_templates, self.num_bins)))
+
+    def test_getting_parameters(self):
+        np.testing.assert_array_equal(
+            self.st.yield_param_values,
+            np.array([self.sig_temp.yield_param_values, self.bkg_temp.yield_param_values])
+        )
+        np.testing.assert_array_equal(
+            self.st.yield_param_errors,
+            np.array([self.sig_temp.yield_param_errors, self.bkg_temp.yield_param_errors])
+        )
+        np.testing.assert_array_equal(
+            self.st.nui_param_values,
+            np.vstack((self.sig_temp.nui_param_values, self.bkg_temp.nui_param_values))
+        )
+        np.testing.assert_array_equal(
+            self.st.nui_param_errors,
+            np.vstack((self.sig_temp.nui_params_errors, self.bkg_temp.nui_params_errors))
+        )
+
+    def test_setting_parameters(self):
+        new_yield_values = np.array([10, 200])
+        new_yield_errors = np.sqrt(np.array([10, 200]))
+        self.st.yield_param_values = new_yield_values
+        self.st.yield_param_errors = new_yield_errors
+        np.testing.assert_array_equal(
+            self.st.yield_param_values,
+            new_yield_values
+        )
+        np.testing.assert_array_equal(
+            self.st.yield_param_errors,
+            new_yield_errors
+        )
+
+        new_nui_values = np.random.randn(2*self.num_bins)
+        new_nui_errors = np.random.randn(2*self.num_bins) + 1
+        self.st.nui_param_values = new_nui_values
+        self.st.nui_param_errors = new_nui_errors
+
+        np.testing.assert_array_equal(
+            self.st.nui_param_values,
+            new_nui_values.reshape((self.num_templates, self.num_bins))
+        )
+        np.testing.assert_array_equal(
+            self.st.nui_param_errors,
+            new_nui_errors.reshape((self.num_templates, self.num_bins))
+        )
+
+    def test_update_parameters(self):
+        new_values = np.random.randn(self.num_templates + self.num_templates*self.num_bins)
+        new_errors = np.random.randn(self.num_templates + self.num_templates*self.num_bins)
+
+        self.st.update_parameters(new_values, new_errors)
+
+        exp_yield_values= new_values[:self.num_templates]
+        exp_nui_params = new_values[self.num_templates:].reshape((self.num_templates, self.num_bins))
+        exp_yield_errors = new_errors[:self.num_templates]
+        exp_nui_params_errors = new_errors[self.num_templates:].reshape((self.num_templates, self.num_bins))
+
+        np.testing.assert_array_equal(
+            self.st.yield_param_values,
+            exp_yield_values
+        )
+        np.testing.assert_array_equal(
+            self.st.yield_param_errors,
+            exp_yield_errors
+        )
+        np.testing.assert_array_equal(
+            self.st.nui_param_values,
+            exp_nui_params
+        )
+        np.testing.assert_array_equal(
+            self.st.nui_param_errors,
+            exp_nui_params_errors
+        )
+
 
 class TestSimultaneousTemplate(unittest.TestCase):
     pass
