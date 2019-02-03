@@ -16,14 +16,12 @@ import matplotlib.pyplot
 
 from templatefitter.histogram import Hist1d
 from templatefitter.utility import cov2corr
+from templatefitter.nll import StackedTemplateNegLogLikelihood
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
-    "AbstractTemplate",
-    "Template",
-    "StackedTemplate",
-    "SimultaneousTemplate"
+    "AbstractTemplate", "Template", "StackedTemplate", "SimultaneousTemplate"
 ]
 
 
@@ -148,8 +146,8 @@ class Template(AbstractTemplate):
 
         self._variable = variable
         self._limits = limits
-        self._hist = Hist1d(num_bins, limits,
-                            df[variable].values, df[weight].values)
+        self._hist = Hist1d(num_bins, limits, df[variable].values,
+                            df[weight].values)
 
         self._num_bins = num_bins
         self._bin_edges = self._hist.bin_edges
@@ -165,13 +163,10 @@ class Template(AbstractTemplate):
         self._param_yield = TemplateParameter(
             np.sum(self._hist.bin_counts),
             np.sqrt(np.sum(self._hist.bin_errors_sq)),
-            f"{name}_yield"
+            f"{name}_yield",
         )
         self._param_nui = TemplateParameter(
-            np.zeros(self.num_bins),
-            np.ones(self.num_bins),
-            f"{name}_nui"
-        )
+            np.zeros(self.num_bins), np.ones(self.num_bins), f"{name}_nui")
 
     def _init_errors(self):
         """The statistical covariance matrix is initialized as diagonal
@@ -189,7 +184,7 @@ class Template(AbstractTemplate):
             np.sqrt(np.diag(self._cov)),
             self._hist.bin_counts,
             out=np.full(self.num_bins, 1e-7),
-            where=self._hist.bin_counts != 0
+            where=self._hist.bin_counts != 0,
         )
 
     def add_covariance_matrix(self, covariance_matrix):
@@ -211,7 +206,7 @@ class Template(AbstractTemplate):
             np.sqrt(np.diag(self._cov)),
             self._hist.bin_counts,
             out=np.full(self.num_bins, 1e-7),
-            where=self._hist.bin_counts != 0
+            where=self._hist.bin_counts != 0,
         )
 
     def errors(self):
@@ -255,8 +250,7 @@ class Template(AbstractTemplate):
             Bin fractions of this template. Shape is (`num_bins`,).
         """
         per_bin_yields = self._hist.bin_counts * (
-                1 + nui_params * self._relative_errors
-        )
+            1 + nui_params * self._relative_errors)
         return per_bin_yields / np.sum(per_bin_yields)
 
     def plot_on(self, ax, **kwargs):
@@ -394,8 +388,7 @@ class StackedTemplate(AbstractTemplate):
     """
     """
 
-    def __init__(self, name: str, variable: str,
-                 num_bins: int, limits: Tuple[float, float]):
+    def __init__(self, name, variable, num_bins, limits):
         super().__init__(name)
         self._variable = variable
         self._limits = limits
@@ -407,9 +400,7 @@ class StackedTemplate(AbstractTemplate):
 
         self._template_dict = OrderedDict()
 
-    def add_template(self,
-                     tid: str,
-                     template: Template):
+    def add_template(self, tid, template):
         """Adds an instance of an Template to the container.
 
         Parameters
@@ -428,9 +419,7 @@ class StackedTemplate(AbstractTemplate):
         self._check_template_validity(template)
         self._template_dict[tid] = template
 
-    def create_template(self, tid: str,
-                        df: pd.DataFrame,
-                        weight: str = "weight"):
+    def create_template(self, tid, df, weight="weight"):
         """Creates an instance of Template and adds it to the
         container.
 
@@ -446,11 +435,10 @@ class StackedTemplate(AbstractTemplate):
             Optional string specifying the column name in `df` with
             the event weights. Default is 'weight'.
         """
-        self._template_dict[tid] = Template(
-            tid, self._variable, self.num_bins, self._limits, df, weight
-        )
+        self._template_dict[tid] = Template(tid, self._variable, self.num_bins,
+                                            self._limits, df, weight)
 
-    def _check_template_validity(self, template: Template):
+    def _check_template_validity(self, template):
         """Checks, if the given template is compatible with
         this container.
 
@@ -470,29 +458,34 @@ class StackedTemplate(AbstractTemplate):
 
         if not (eq_vid and eq_num_bins and eq_limits):
             raise ValueError(
-                "Given template is not compatible with this collection."
-            )
+                "Given template is not compatible with this collection.")
 
-    def errors(self) -> np.ndarray:
+    def errors(self):
         """numpy.ndarray: Sum over all template errors squared
         in each bin (bin errors of the stacked template).
         """
-        errors = np.sqrt(np.sum(
-            np.array([template.errors() ** 2 for template in self._template_dict.values()]),
-            axis=0
-        ))
+        errors = np.sqrt(
+            np.sum(
+                np.array([
+                    template.errors()**2
+                    for template in self._template_dict.values()
+                ]),
+                axis=0,
+            ))
         return errors
 
-    def values(self) -> np.ndarray:
+    def values(self):
         """numpy.ndarray: Sum over all template values in each
         bin (bin counts of the stacked template).
         """
         return np.sum(
-            np.array([template.values() for template in self._template_dict.values()]),
-            axis=0
+            np.array([
+                template.values() for template in self._template_dict.values()
+            ]),
+            axis=0,
         )
 
-    def fractions(self, nuiss_params: np.ndarray) -> np.ndarray:
+    def fractions(self, nuiss_params):
         """Evaluates all `bin_fractions` methods of all templates in this
         container. Here, the bin fractions depend on so called nuissance
         parameters which incorporate uncertainties on the template shape.
@@ -512,14 +505,14 @@ class StackedTemplate(AbstractTemplate):
             Shape is (`num_templates`, `num_bins`).
         """
         nui_params_per_template = np.split(nuiss_params, self.num_templates)
-        fractions_per_template = np.array(
-            [template.fractions(nui_params) for template, nui_params
-             in zip(self._template_dict.values(), nui_params_per_template)]
-        )
+        fractions_per_template = np.array([
+            template.fractions(nui_params) for template, nui_params in zip(
+                self._template_dict.values(), nui_params_per_template)
+        ])
 
         return fractions_per_template
 
-    def plot_on(self, ax: matplotlib.pyplot.axis, **kwargs):
+    def plot_on(self, ax, **kwargs):
         """Plots the templates as stacked histogram on a given
         axis. Also the total uncertainty is plotted as hatched bars.
 
@@ -531,7 +524,9 @@ class StackedTemplate(AbstractTemplate):
             Additional keyword arguments used to change the plot.
         """
         bin_mids = [self.bin_mids for _ in range(self.num_templates)]
-        bin_counts = [template.values() for template in self._template_dict.values()]
+        bin_counts = [
+            template.values() for template in self._template_dict.values()
+        ]
         labels = [template.name for template in self._template_dict.values()]
         ax.hist(
             bin_mids,
@@ -546,8 +541,7 @@ class StackedTemplate(AbstractTemplate):
         )
 
         uncertainties_sq = np.array(
-            [template.errors ** 2 for template in self._template_dict.values()]
-        )
+            [template.errors**2 for template in self._template_dict.values()])
         total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
 
@@ -562,8 +556,7 @@ class StackedTemplate(AbstractTemplate):
             lw=0,
         )
 
-    def generate_asimov_dataset(self,
-                                integer_values: bool = False) -> Hist1d:
+    def generate_asimov_dataset(self, integer_values):
         """Generates an Asimov dataset from the given templates.
         This is a binned dataset which corresponds to the current
         expectation values. Since data takes only integer values,
@@ -586,7 +579,7 @@ class StackedTemplate(AbstractTemplate):
             asimov_bin_counts = self.values()
         return Hist1d.from_binned_data(self.bin_edges, asimov_bin_counts)
 
-    def generate_toy_dataset(self) -> Hist1d:
+    def generate_toy_dataset(self):
         """Generates a toy dataset from the given templates.
         This is a binned dataset where each bin is treated a
         random number following a poisson distribution with
@@ -606,9 +599,8 @@ class StackedTemplate(AbstractTemplate):
         for template in self._template_dict.values():
             template.reset_parameters()
 
-    def create_nll(self, dataset: Hist1d):
+    def create_nll(self, dataset):
         """Creates a negative log likelihood object from the
-        given dataset.
 
         Parameters
         ----------
@@ -619,12 +611,10 @@ class StackedTemplate(AbstractTemplate):
         -------
         StackedTemplateNegLogLikelihood
         """
-        from templatefitter.nll import StackedTemplateNegLogLikelihood
+
         return StackedTemplateNegLogLikelihood(dataset, self)
 
-    def update_parameters(self,
-                          new_parameters: np.ndarray,
-                          new_errors: np.ndarray):
+    def update_parameters(self, new_parameters, new_errors):
         """Updates all template yields and nuissance parameters.
 
         Parameters
@@ -636,10 +626,10 @@ class StackedTemplate(AbstractTemplate):
             New yield and nuissance parameter errors. Shape is
             (`num_templates` + `num_templates`*`num_bins`,).
         """
-        yields = new_parameters[: self.num_templates]
-        nuiss_params = new_parameters[self.num_templates :]
-        yield_errors = new_errors[: self.num_templates]
-        nuiss_param_errors = new_errors[self.num_templates :]
+        yields = new_parameters[:self.num_templates]
+        nuiss_params = new_parameters[self.num_templates:]
+        yield_errors = new_errors[:self.num_templates]
+        nuiss_param_errors = new_errors[self.num_templates:]
 
         self.yield_param_values = yields
         self.nui_param_values = nuiss_params
@@ -649,28 +639,32 @@ class StackedTemplate(AbstractTemplate):
     # -- properties
 
     @property
-    def num_templates(self) -> int:
+    def num_templates(self):
         """int: Number of templates in this container."""
         return len(self._template_dict)
 
     @property
-    def yield_params(self) -> List[TemplateParameter]:
+    def yield_params(self):
         """List of TemplateParameter: Yield parameters."""
-        return [template.yield_param for template in self._template_dict.values()]
+        return [
+            template.yield_param for template in self._template_dict.values()
+        ]
 
     @property
-    def nui_params(self) -> List[TemplateParameter]:
+    def nui_params(self):
         """List of TemplateParameter: Nuissance parameters."""
-        return [template.nui_params for template in self._template_dict.values()]
+        return [
+            template.nui_params for template in self._template_dict.values()
+        ]
 
     @property
-    def yield_param_values(self) -> np.ndarray:
+    def yield_param_values(self):
         """numpy.ndarray: An array with current yield parameter
         values of all templates."""
-        return np.array(
-            [template.yield_param.value for template
-             in self._template_dict.values()]
-        )
+        return np.array([
+            template.yield_param.value
+            for template in self._template_dict.values()
+        ])
 
     @yield_param_values.setter
     def yield_param_values(self, new_values):
@@ -678,13 +672,13 @@ class StackedTemplate(AbstractTemplate):
             template.yield_param_values = value
 
     @property
-    def yield_param_errors(self) -> np.ndarray:
+    def yield_param_errors(self):
         """numpy.ndarray: An array with current yield parameter
         errors of all templates."""
-        return np.array(
-            [template.yield_param.error for template
-             in self._template_dict.values()]
-        )
+        return np.array([
+            template.yield_param.error
+            for template in self._template_dict.values()
+        ])
 
     @yield_param_errors.setter
     def yield_param_errors(self, new_errors):
@@ -692,13 +686,13 @@ class StackedTemplate(AbstractTemplate):
             template.yield_param_errors = error
 
     @property
-    def nui_param_values(self) -> np.ndarray:
+    def nui_param_values(self):
         """numpy.ndarray: An array with current nuissance parameter
         values of all templates."""
-        return np.array(
-            [template.nui_params.value for template
-             in self._template_dict.values()]
-        )
+        return np.array([
+            template.nui_params.value
+            for template in self._template_dict.values()
+        ])
 
     @nui_param_values.setter
     def nui_param_values(self, new_values):
@@ -707,13 +701,13 @@ class StackedTemplate(AbstractTemplate):
             template.nui_param_values = values
 
     @property
-    def nui_param_errors(self) -> np.ndarray:
+    def nui_param_errors(self):
         """numpy.ndarray: An array with current nuissance parameter
         errors of all templates."""
-        return np.array(
-            [template.nui_params_errors for template
-             in self._template_dict.values()]
-        )
+        return np.array([
+            template.nui_params_errors
+            for template in self._template_dict.values()
+        ])
 
     @nui_param_errors.setter
     def nui_param_errors(self, new_errors):
@@ -722,19 +716,21 @@ class StackedTemplate(AbstractTemplate):
             template.nui_params_errors = errors
 
     @property
-    def template_names(self) -> List[str]:
+    def template_names(self):
         """list of str: List of all template names."""
         return [template.name for template in self._template_dict.values()]
 
     @property
-    def inv_corr_mats(self) -> List[np.ndarray]:
+    def inv_corr_mats(self):
         """list of numpy.ndarray: A list of inverse correlation
         matrices for all templates."""
-        return [template.inv_corr_mat for template in self._template_dict.values()]
+        return [
+            template.inv_corr_mat for template in self._template_dict.values()
+        ]
 
     # -- magic methods
 
-    def __getitem__(self, tid: str) -> Template:
+    def __getitem__(self, tid):
         """Template: The template stored with id `tid`"""
         return self._template_dict[tid]
 

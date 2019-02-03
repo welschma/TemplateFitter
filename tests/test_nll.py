@@ -5,9 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 
-from templatefitter.templates import StackedTemplate, Template
-from templatefitter.histogram import Hist1d
-
+import templatefitter as tf
 
 class TestStackedTemplateNegLogLikelihood(unittest.TestCase):
 
@@ -40,14 +38,14 @@ class TestStackedTemplateNegLogLikelihood(unittest.TestCase):
         self.var = "x"
         self.num_templates = 2
 
-        self.hdata = Hist1d(self.num_bins, self.limits, self.data)
+        self.hdata = tf.histogram.Hist1d(self.num_bins, self.limits, self.data)
 
-        self.sig_hist = Hist1d(self.num_bins, self.limits, self.sig.x, self.sig.weight)
-        self.bkg_hist = Hist1d(self.num_bins, self.limits, self.bkg.x, self.bkg.weight)
+        self.sig_hist = tf.histogram.Hist1d(self.num_bins, self.limits, self.sig.x, self.sig.weight)
+        self.bkg_hist = tf.histogram.Hist1d(self.num_bins, self.limits, self.bkg.x, self.bkg.weight)
 
-        self.st = StackedTemplate("test", "x", self.num_bins, self.limits)
-        self.sig_temp = Template("sig", "x", self.num_bins, self.limits, self.sig)
-        self.bkg_temp = Template("bkg", "x", self.num_bins, self.limits, self.bkg)
+        self.st = tf.templates.StackedTemplate("test", "x", self.num_bins, self.limits)
+        self.sig_temp = tf.templates.Template("sig", "x", self.num_bins, self.limits, self.sig)
+        self.bkg_temp = tf.templates.Template("bkg", "x", self.num_bins, self.limits, self.bkg)
         self.st.add_template("sig", self.sig_temp)
         self.st.add_template("bkg", self.bkg_temp)
 

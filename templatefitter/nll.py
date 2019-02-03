@@ -10,13 +10,7 @@ import numpy as np
 
 from scipy.linalg import block_diag
 
-from templatefitter.histogram import Hist1d, AbstractHist
-from templatefitter.templates import AbstractTemplate, StackedTemplate
-
-__all__ = [
-    "AbstractTemplateCostFunction",
-    "StackedTemplateNegLogLikelihood",
-]
+__all__ = ["AbstractTemplateCostFunction", "StackedTemplateNegLogLikelihood"]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -35,7 +29,7 @@ class AbstractTemplateCostFunction(ABC):
         the templates to the measured data set.
     """
 
-    def __init__(self, histdataset: AbstractHist, templates: AbstractTemplate):
+    def __init__(self, histdataset, templates):
         self._dataset = histdataset
         self._templates = templates
 
@@ -64,16 +58,20 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
     """A negative log likelihood (NLL) function for binned data using
     template histograms shapes as pdfs. The NLL is calculated as
 
-    :math:`-\log(L) = \sum\limits_{i=1}^{n_{\mathrm{bins}}} \\nu_i - n_i \log(\\nu_i)`,
+    .. math::
+
+    `-\log(L) = \sum\limits_{i=1}^{n_{\mathrm{bins}}} \\nu_i - n_i \log(\\nu_i)`,
 
     with:
- 
+
     * :math:`\\nu_i` - total expected number of events in bin :math:`i`
     * :math:`n_i` - measured number of events in bin :math:`i`.
 
     The total expected number of events per bin is given by
 
-    :math:`\\nu_i = \sum\limits_{k=1}^{n_\mathrm{templates}} f_{ik}\\nu_{ik}`,
+    .. math::
+
+    `\\nu_i = \sum\limits_{k=1}^{n_\mathrm{templates}} f_{ik}\\nu_{ik}`,
 
     with:
 
@@ -82,7 +80,9 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
 
     :math:`f_{ik} does depend on a nuissance parameter :math:`\theta_{ik}`:
 
-    :math:`f_{ik} = \frac{\\nu_{ik}(1 + \theta_{ik}\epsilon{ik})}{\sum\limits_{j=1}^{n_\mathrm{bins}}\\nu_{jk}(1 + \theta_{jk}\epsilon{jk})},
+    .. math::
+
+    `f_{ik} = \frac{\\nu_{ik}(1 + \theta_{ik}\epsilon{ik})}{\sum\limits_{j=1}^{n_\mathrm{bins}}\\nu_{jk}(1 + \theta_{jk}\epsilon{jk})},
 
     where :math:`\epsilon_{jk}` is the relative uncertainty of template
     :math:`k` in bin :math:`j`.
@@ -97,9 +97,10 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
         the templates to the measured data set.
     """
 
-    def __init__(self,  binned_dataset: Hist1d, templates: StackedTemplate):
+    def __init__(self, binned_dataset, templates):
         super().__init__(binned_dataset, templates)
-        self._block_diag_inv_corr_mats = block_diag(*self._templates.inv_corr_mats)
+        self._block_diag_inv_corr_mats = block_diag(
+            *self._templates.inv_corr_mats)
 
     @property
     def x0(self):
@@ -111,15 +112,13 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
     @property
     def param_names(self):
         yields = [
-            template_id + "_yield" for template_id in self._templates.template_names
+            template_id + "_yield"
+            for template_id in self._templates.template_names
         ]
-        nui_params = [
-            [
-                template_name + "_nui" + f"_{i}"
-                for i in range(self._templates.num_bins)
-            ]
-            for template_name in self._templates.template_names
-        ]
+        nui_params = [[
+            template_name + "_nui" + f"_{i}"
+            for i in range(self._templates.num_bins)
+        ] for template_name in self._templates.template_names]
         yields.extend(itertools.chain.from_iterable(nui_params))
         return yields
 
@@ -133,15 +132,13 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
         float
             The value of the negative log likelihood at `x`.
         """
-        poi = x[: self._templates.num_templates]
+        poi = x[:self._templates.num_templates]
         nuiss_params = x[self._templates.num_templates:]
 
         exp_evts_per_bin = poi @ self._templates.fractions(nuiss_params)
-        poisson_term = np.sum(
-            exp_evts_per_bin - self._dataset.bin_counts * np.log(exp_evts_per_bin)
-        )
+        poisson_term = np.sum(exp_evts_per_bin - self._dataset.bin_counts *
+                              np.log(exp_evts_per_bin))
         gauss_term = 0.5 * (
-                nuiss_params @ self._block_diag_inv_corr_mats @ nuiss_params
-        )
+            nuiss_params @ self._block_diag_inv_corr_mats @ nuiss_params)
 
         return poisson_term + gauss_term
