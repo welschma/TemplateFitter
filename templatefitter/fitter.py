@@ -168,7 +168,7 @@ class TemplateFitter:
 
         return profile_points, profile_values, hesse_approx
 
-    def get_significance(self, tid):
+    def get_significance(self, tid, verbose=True):
         """Calculate significance for yield parameter of template
         specified by `tid` using the profile likelihood ratio.
 
@@ -188,7 +188,7 @@ class TemplateFitter:
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
-        fit_result = minimizer.minimize(self._nll.x0, verbose=True)
+        fit_result = minimizer.minimize(self._nll.x0, verbose=verbose)
 
         if fit_result.params["yield_" + tid][0] < 0:
             return 0
@@ -201,7 +201,7 @@ class TemplateFitter:
             self._minimizer_id, self._nll, self._nll.param_names
         )
         minimizer.set_param_fixed("yield_" + tid)
-        profile_result = minimizer.minimize(self._nll.x0, verbose=True)
+        profile_result = minimizer.minimize(self._nll.x0, verbose=verbose)
         q0 = 2 * (profile_result.fcn_min_val - fit_result.fcn_min_val)
         logging.debug(f"q0: {q0}")
         return np.sqrt(q0)
