@@ -519,7 +519,7 @@ class AbstractCompositeTemplate(ABC):
         asimov_dataset : numpy.ndarray
             Shape is (`num_bins`)
         """
-        return np.rint(self.bin_counts)
+        return self.bin_counts
 
     def generate_toy_dataset(self):
         """Generates a toy dataset from the given templates.
