@@ -10,6 +10,8 @@ import numpy as np
 
 from scipy.linalg import block_diag
 
+import warnings
+
 __all__ = ["AbstractTemplateCostFunction", "StackedTemplateNegLogLikelihood"]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -32,6 +34,12 @@ class AbstractTemplateCostFunction(ABC):
     def __init__(self, histdataset, templates):
         self._dataset = histdataset
         self._templates = templates
+
+        self._d = histdataset.bin_counts
+        # self._empty = self._d < 1e-100
+        # if np.any(self._empty):
+        #     logging.warn("Empty bins found in given dataset. These bins are ignored.")
+        # self._d = self._d[~self._empty]
 
     # -- abstract properties
 
@@ -116,9 +124,9 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
             for template_id in self._templates.template_names
         ]
         nui_params = [[
-            template_name + "_nui" + f"_{i}"
+            template_id + "_nui" + f"_{i}"
             for i in range(self._templates.num_bins)
-        ] for template_name in self._templates.template_names]
+        ] for template_id in self._templates.template_names]
         yields.extend(itertools.chain.from_iterable(nui_params))
         return yields
 
@@ -136,9 +144,21 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
         nuiss_params = x[self._templates.num_templates:]
 
         exp_evts_per_bin = poi @ self._templates.fractions(nuiss_params)
-        poisson_term = np.sum(exp_evts_per_bin - self._dataset.bin_counts *
-                              np.log(exp_evts_per_bin))
+        #TODO handle empty bins?
+        # exp_evts_per_bin = exp_evts_per_bin[~self._empty]
+
+        # this poisson term is taken from Blobel
+        poisson_term = np.sum(exp_evts_per_bin - self._d -
+                              xlogyx(self._d, exp_evts_per_bin))
         gauss_term = 0.5 * (
             nuiss_params @ self._block_diag_inv_corr_mats @ nuiss_params)
 
         return poisson_term + gauss_term
+
+
+def xlogyx(x, y):
+    """Compute x*log(y/x) to a good precision when y~x.
+    The xlogyx function is taken from https://github.com/scikit-hep/probfit/blob/master/probfit/_libstat.pyx.
+    """
+    result = np.where(x < y, x*np.log1p((y-x)/x), -x*np.log1p((x-y)/y))
+    return np.nan_to_num(result)

@@ -541,7 +541,7 @@ class StackedTemplate(AbstractTemplate):
         )
 
         uncertainties_sq = np.array(
-            [template.errors**2 for template in self._template_dict.values()])
+            [template.errors()**2 for template in self._template_dict.values()])
         total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
 
@@ -556,7 +556,7 @@ class StackedTemplate(AbstractTemplate):
             lw=0,
         )
 
-    def generate_asimov_dataset(self, integer_values):
+    def generate_asimov_dataset(self, integer_values=False):
         """Generates an Asimov dataset from the given templates.
         This is a binned dataset which corresponds to the current
         expectation values. Since data takes only integer values,

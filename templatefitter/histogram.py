@@ -248,6 +248,8 @@ class Hist1d(AbstractHist):
 
         instance._bin_errors_sq = bin_errors**2
 
+        return instance
+
     def fill(self, data, weights=None):
         if weights is None:
             weights = np.ones_like(data)

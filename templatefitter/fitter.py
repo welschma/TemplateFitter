@@ -89,7 +89,6 @@ class TemplateFitter:
         """
         self._fixed_parameters.append(param_id)
 
-
     def set_parameter_bounds(self, param_id, bounds):
         """Adds parameter and its boundaries to the bound
         parameter dictionary.
@@ -250,20 +249,17 @@ class ToyStudy:
     ----------
     templates : TemplateCollection
         A instance of the TemplateCollection class.
-    nll
-        A class used as negative log likelihood function.
     """
 
-    def __init__(self, templates, nll, minimizer_id):
+    def __init__(self, templates, minimizer_id):
         self._templates = templates
-        self._nll = nll
         self._mimizer_id = minimizer_id
 
         self._toy_results = {"parameters": [], "uncertainties": []}
 
         self._is_fitted = False
 
-    def do_experiments(self, n_exp=1000):
+    def do_experiments(self, n_exp=1000, max_tries=10):
         """Performs fits using the given template and generated
         toy monte carlo (following a poisson distribution) as data.
 
@@ -271,23 +267,43 @@ class ToyStudy:
         ----------
         n_exp : int
             Number of toy experiments to run.
+        max_tries : int
+            Maximum number of tries for an experiment if a RuntimeError
+            occurs.
         """
 
         self._reset_state()
 
+        print(f"Performing toy study with {n_exp} experiments...")
         for _ in tqdm.tqdm(range(n_exp), desc="Experiments Progress"):
-            htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
-            htoy_data.bin_counts = self._templates.generate_toy_dataset()
-
-            fitter = TemplateFitter(
-                htoy_data, self._templates, self._nll, minimizer_id=self._mimizer_id
-            )
-            result = fitter.do_fit(update_templates=False)
-
-            self._toy_results["parameters"].append(result.params.values)
-            self._toy_results["uncertainties"].append(result.params.errors)
+                self._experiment(max_tries)
 
         self._is_fitted = True
+
+    def _experiment(self, max_tries=10, get_hesse=True):
+        """
+        Helper function for toy experiments.
+        """
+        for _ in range(max_tries):
+            try:
+
+                htoy_data = self._templates.generate_toy_dataset()
+
+                fitter = TemplateFitter(
+                    htoy_data, self._templates, minimizer_id=self._mimizer_id
+                )
+                result = fitter.do_fit(update_templates=False, get_hesse=get_hesse)
+
+                self._toy_results["parameters"].append(result.params.values)
+                self._toy_results["uncertainties"].append(result.params.errors)
+
+                return None
+
+            except RuntimeError:
+                logging.debug("RuntimeError occured in toy experiment. Trying again")
+                continue
+
+        raise RuntimeError("Experiment exceed max number of retries.")
 
     def do_linearity_test(self, template_id, limits, n_points=10, n_exp=200):
         """Performs a linearity test for the yield parameter of
@@ -312,26 +328,19 @@ class ToyStudy:
         param_fit_errors = list()
         param_points = np.linspace(*limits, n_points)
 
+        print(f"Performing linearity test for parameter: {template_id}")
         for param_point in tqdm.tqdm(param_points, desc="Linearity Test Progress"):
             self._reset_state()
-            self._templates.set_yield(template_id, param_point)
+
+            self._templates[template_id].yield_param_values = param_point
 
             for _ in tqdm.tqdm(range(n_exp), desc="Experiment Progress"):
-                htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
-                htoy_data.bin_counts = self._templates.generate_toy_dataset()
-
-                fitter = TemplateFitter(
-                    htoy_data, self._templates, self._nll, minimizer_id=self._mimizer_id
-                )
-                result = fitter.do_fit(update_templates=False, get_hesse=False)
-
-                self._toy_results["parameters"].append(result.params.values)
-                self._toy_results["uncertainties"].append(result.params.errors)
+                self._experiment(get_hesse=False)
 
             self._is_fitted = True
 
             params, _ = self.get_toy_results(
-                self._templates.template_ids.index(template_id)
+                self._templates.template_names.index(template_id)
             )
             param_fit_results.append(np.mean(params))
             param_fit_errors.append(np.std(params))
@@ -400,7 +409,7 @@ class ToyStudy:
         parameters, uncertainties = self.get_toy_results(param_index)
         # this works only for template yield, for nuissance parameters
         # i have change this
-        expected_yield = self._templates.yield_values[param_index]
+        expected_yield = self._templates.yield_param_values[param_index]
 
         return (parameters - expected_yield) / uncertainties
 
