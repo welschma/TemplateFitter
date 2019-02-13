@@ -63,43 +63,46 @@ class AbstractTemplateCostFunction(ABC):
 
 
 class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
-    """A negative log likelihood (NLL) function for binned data using
+    """
+    A negative log likelihood (NLL) function for binned data using
     template histograms shapes as pdfs. The NLL is calculated as
 
     .. math::
 
-    `-\log(L) = \sum\limits_{i=1}^{n_{\mathrm{bins}}} \\nu_i - n_i \log(\\nu_i)`,
+        -\log(L) = \sum \limits_{i=1}^{n_\mathrm{bins}} (\\nu_i - n_i ) - n_i \log(\\frac{\\nu_i}{n_i}),
 
     with:
 
     * :math:`\\nu_i` - total expected number of events in bin :math:`i`
     * :math:`n_i` - measured number of events in bin :math:`i`.
 
+    As you may note this is not the standard Poisson term in a Log Likelihood. A constant
+    term has been added to bring the Likelihood in this form.
     The total expected number of events per bin is given by
 
     .. math::
 
-    `\\nu_i = \sum\limits_{k=1}^{n_\mathrm{templates}} f_{ik}\\nu_{ik}`,
+        \\nu_i = \sum \limits_{k=1}^{n_\mathrm{templates}} f_{ik}\cdot \\nu_{ik},
 
     with:
 
     * :math:`\\nu_{ik}` - expected number of events in bin :math:`i` of template :math:`k`
     * :math:`f_{ik}` - fraction of template :math:`k` in bin :math:`i`.
 
-    :math:`f_{ik} does depend on a nuissance parameter :math:`\theta_{ik}`:
+    :math:`f_{ik}` does depend on a nuissance parameter :math:`\\theta_{ik}`:
 
     .. math::
 
-    `f_{ik} = \frac{\\nu_{ik}(1 + \theta_{ik}\epsilon{ik})}{\sum\limits_{j=1}^{n_\mathrm{bins}}\\nu_{jk}(1 + \theta_{jk}\epsilon{jk})},
+        f_{ik} = \\frac{\\nu_{ik}(1 + \\theta_{ik} \epsilon{ik})}{\sum \limits_{j=1}^{ n_\mathrm{bins}}\\nu_{jk}(1 + \\theta_{jk}\epsilon{jk})},
 
     where :math:`\epsilon_{jk}` is the relative uncertainty of template
     :math:`k` in bin :math:`j`.
 
     Parameters
     ----------
-    binned_dataset: Hist1d
+    binned_dataset : Hist1d
         Histogram of the dataset.
-    templates: StackedTemplate
+    templates : StackedTemplate
         A StackedTemplate instance. The templates are used to
         extract the contribution from each process described by
         the templates to the measured data set.
@@ -132,7 +135,7 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
 
     def __call__(self, x: np.ndarray) -> float:
         """This function is called by the minimize method.
-        `x` is an 1-D array with shape (n,). These are the parameters
+        `x` is an 1-D array with shape (`n`,). These are the parameters
         which are fitted.
 
         Returns
@@ -156,7 +159,7 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
 
 
 def xlogyx(x, y):
-    """Compute x*log(y/x) to a good precision when y~x.
+    """Compute :math:`x*log(y/x)`to a good precision when :math:`y~x`.
     The xlogyx function is taken from https://github.com/scikit-hep/probfit/blob/master/probfit/_libstat.pyx.
     """
     result = np.where(x < y, x*np.log1p((y-x)/x), -x*np.log1p((x-y)/y))

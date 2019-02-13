@@ -167,7 +167,8 @@ class Histogram:
 
 
 class AbstractHist(ABC):
-    """
+    """Abstract histogram class. Used as base class by all
+    histograms.
     """
     def __init__(self):
         self._bin_edges = None
@@ -182,35 +183,59 @@ class AbstractHist(ABC):
 
     @property
     def bin_edges(self):
+        """numpy.ndarray: Bin edges. Shape is (`num_bins`,)."""
         return self._bin_edges
 
     @property
     def bin_mids(self):
+        """numpy.ndarray: Bin mids. Shape is (`num_bins`,)."""
         return (self.bin_edges[1:] + self.bin_edges[:-1]) / 2
 
     @property
     def bin_width(self):
+        """float: Bin width."""
         return self.bin_edges[1] - self.bin_edges[0]
 
     @property
     def bin_counts(self):
+        """numpy.ndarray: Bin counts. Shape is (`num_bins`,)."""
         return self._bin_counts
 
     @property
     def bin_errors(self):
+        """numpy.ndarray: Bin errors, calculated as :math:`\sqrt{\sum_i w_i^2}`.
+        Shape is (`num_bins`,)."""
         return np.sqrt(self._bin_errors_sq)
 
     @property
     def bin_errors_sq(self):
+        """numpy.ndarray: Bin errors square,  calculated as :math:`\sum_i w_i^2`.
+        Shape is (`num_bins`,)."""
         return self._bin_errors_sq
 
     @property
     def num_bins(self):
+        """int: Number of bins."""
         return self._num_bins
 
 
 class Hist1d(AbstractHist):
-    """
+    """Implementation of a 1 dimensional histogram.
+
+    Parameters
+    ----------
+    bins : int, np.ndarray, sequence
+        Either the number of bins for the histogram or a sequence
+        of bin edges.
+    limits : tuple of float, optional
+        Lower and upper bound of the histogram. only required if
+        `bins` is passed as `int`. Default is `False`.
+    data : numpy.ndarray, pandas.Series, optional
+        Sequence which is filled into the histogram. Default is
+        `None`.
+    weights : numpy.ndarray, pandas.Series, optional
+        Sequence which is used as event weights. If no weights are
+        given, each event is weighted with 1.0. Default is None.
     """
 
     def __init__(self, bins, limits=None, data=None, weights=None):
@@ -232,13 +257,20 @@ class Hist1d(AbstractHist):
 
     @classmethod
     def from_binned_data(cls, bin_edges, bin_counts, bin_errors=None):
-        """
+        """Creates a `Hist1d` from a binned dataset.
 
         Parameters
         ----------
-        bin_edges
-        bin_counts
-        bin_errors
+        bin_edges : numpy.ndarray
+            Array with of bin edges.
+        bin_counts : numpy.ndarray
+            Array of bin counts.
+        bin_errors : numpy.ndarray
+            Array of bin errors.
+
+        Returns
+        -------
+        histogram : Hist1d
         """
         instance = cls(bin_edges)
         instance._bin_counts = bin_counts
@@ -251,6 +283,16 @@ class Hist1d(AbstractHist):
         return instance
 
     def fill(self, data, weights=None):
+        """Fills the histogram with given data and weights.
+
+        Parameters
+        ----------
+        data : numpy.ndarray, pandas.Series
+            Sequence which is filled into the histogram.
+        weights : numpy.ndarray, pandas.Series, optional
+            Sequence which is used as event weights. If no weights are
+            given, each event is weighted with 1.0. Default is None.
+        """
         if weights is None:
             weights = np.ones_like(data)
         if isinstance(weights, list):

@@ -1,15 +1,20 @@
 TemplateFitter Reference
 ========================
 
-Template Creation
------------------
-Helpful classes to create templates used to fit monte carlo 
-distributions to measured data.
+Reference page for the TemplateFitter package.
 
 Histogram Module
 ################
-.. autoclass:: templatefitter.Histogram
+AbstractHist
+""""""""""""
+.. autoclass:: templatefitter.AbstractHist
     :members:
+
+Hist1d
+""""""
+.. autoclass:: templatefitter.Hist1d
+    :members:
+    :inherited-members:
 
 Template Module
 ###############
@@ -20,12 +25,25 @@ AbstractTemplate
 
 SimpleTemplate
 """"""""""""""
-.. autoclass:: templatefitter.SimpleTemplate
+.. autoclass:: templatefitter.Template
     :members:
     :inherited-members:
 
 AdvancedTemplate
 """"""""""""""""
-.. autoclass:: templatefitter.AdvancedTemplate
+.. autoclass:: templatefitter.StackedTemplate
+    :members:
+    :inherited-members:
+
+NegativeLogLikelihood Module
+############################
+AbstractTemplateCostFunction
+""""""""""""""""""""""""""""
+.. autoclass:: templatefitter.AbstractTemplateCostFunction
+    :members:
+
+StackedTemplateNegLogLikelihood
+"""""""""""""""""""""""""""""""
+.. autoclass:: templatefitter.StackedTemplateNegLogLikelihood
     :members:
     :inherited-members:
