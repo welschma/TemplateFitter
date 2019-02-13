@@ -31,10 +31,13 @@ class TemplateFitter:
         self._fit_result = None
         self._minimizer_id = minimizer_id
 
+        self.n_templates = self._templates.num_templates
+        self.n_bins = self._templates.num_bins
+
         self._fixed_parameters = list()
         self._bound_parameters = dict()
 
-    def do_fit(self, update_templates=True, get_hesse=True, verbose=False):
+    def do_fit(self, update_templates=True, get_hesse=True, verbose=True, fix_nui_params=False):
         """Performs maximum likelihood fit by minimizing the
         provided negative log likelihoood function.
 
@@ -51,6 +54,12 @@ class TemplateFitter:
             minimum of the negative log likelihood function or not.
             Can be computationally expensive if the number of parameters
             in the likelihood is high. Default is True.
+        verbose : bool, optional
+            Whether to print fit information or not. Default is True
+        fix_nui_params : bool, optional
+            Wheter to fix nuissance parameters in the fit or not.
+            Default is False.
+
 
         Returns
         -------
@@ -61,6 +70,11 @@ class TemplateFitter:
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
+
+        if fix_nui_params:
+            for i in range(self.n_templates,
+                           self.n_templates*self.n_bins+self.n_templates):
+                minimizer.set_param_fixed(i)
 
         for param_id in self._fixed_parameters:
             minimizer.set_param_fixed(param_id)
@@ -164,8 +178,7 @@ class TemplateFitter:
         np.ndarray
             Hesse approximation. Shape is (`num_points`,).
         """
-
-        logging.info(f"Calculating profile likelihood for parameter: '{param_id}'")
+        print(f"\nCalculating profile likelihood for parameter: '{param_id}'")
 
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
@@ -190,7 +203,8 @@ class TemplateFitter:
             initial_values = self._nll.x0
             initial_values[param_index] = point
             minimizer.set_param_fixed(param_id)
-            loop_result = minimizer.minimize(initial_values, get_hesse=False)
+            result = minimizer.minimize(initial_values, get_hesse=False)
+            loop_result = minimizer.minimize(result.params.values, get_hesse=False)
 
             profile_values = np.append(profile_values, loop_result.fcn_min_val)
 
