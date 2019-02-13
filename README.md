@@ -1,5 +1,8 @@
 # TemplateFitter
 
+## Documentation (WorkInProgress)
+The documentation can be found on https://templatefitter.readthedocs.io/en/latest/index.html (Note: The documentation is not complete yet.).
+
 ## Installation
 
 ```
@@ -8,9 +11,3 @@ cd TemplateFitter
 pip3 install -e .
 ```
 
-## TODO
-
-* make sure that there are no numerical problems with empty bins
-* get fit significance
-* introduce categories 
-* add some plotting helper functions
