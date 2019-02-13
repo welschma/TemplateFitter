@@ -47,3 +47,21 @@ StackedTemplateNegLogLikelihood
 .. autoclass:: templatefitter.StackedTemplateNegLogLikelihood
     :members:
     :inherited-members:
+
+Fitter Module
+#############
+
+TemplateFitter
+""""""""""""""
+.. autoclass:: templatefitter.TemplateFitter
+    :members:
+
+ToyStudy
+""""""""
+.. autoclass:: templatefitter.ToyStudy
+    :members:
+
+Stats Module
+############
+.. automodule:: templatefitter.stats
+    :members:

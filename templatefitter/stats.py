@@ -16,15 +16,15 @@ def pearson_chi2_test(data, expectation, dof):
 
     .. math::
 
-    `\chi^2=\sum\limits_{i=1}^{n_\mathrm{bins}} \frac{(n_i - \\nu_i)^2}{\\nu_i}`,
+        \chi^2=\sum\limits_{i=1}^{n_\mathrm{bins}} \\frac{(n_i - \\nu_i)^2}{\\nu_i},
 
     where :math:`n_i` is the number of observations in bin
     :math:`i` and :math:`\\nu_i` is the expected number of
-    events in bin :math`i`.
+    events in bin :math:`i`.
 
     In the large sample limits, this test statistic follows a
     :math:`\chi^2`-distribution with :math:`n_\mathrm{bins} - m`
-    degrees of freedom, where :mathm:`m` is the number of unconstrained
+    degrees of freedom, where :math:`m` is the number of unconstrained
     fit parameters.
 
     Parameters
@@ -52,7 +52,7 @@ def pearson_chi2_test(data, expectation, dof):
 def cowan_binned_likelihood_gof(data, expectation, dof):
     """Performs a GOF-test using a test statistic based on a
     binned likelihood function.
-    The test statistic is the ratio :math:`\lambda(\\nu) = L(\\nu=\hat{\\nu})/L(\theta=n)`,
+    The test statistic is the ratio :math:`\lambda(\\nu) = L(\\nu=\hat{\\nu})/L(\\theta=n)`,
     where :math:`\\nu` are the expected values in each bin. In the
     numerator (denominator), the likelihood is evaluated with the estimated
     values for :math:`\\nu` (the measured values).
@@ -61,10 +61,10 @@ def cowan_binned_likelihood_gof(data, expectation, dof):
 
     .. math::
 
-    `\chi^2 = -2\log\lambda = 2\sum\limits_{i=1}^{n_\mathrm{bins}} (n_i\log\frac{n_i}{\hat{\\nu_i}} - \hat[\\nu_i} - n_i`,
+        \chi^2 = -2\log \lambda = 2\sum\limits_{i=1}^{n_\mathrm{bins}} n_i\log(\\frac{n_i}{\hat{\\nu_i}}) - \hat{\\nu_i} - n_i,
 
     follows a :math:`\chi^2`-distribution with :math:`n_\mathrm{bins} - m`
-    degrees of freedom, where :mathm:`m` is the number of unconstrained
+    degrees of freedom, where :math:`m` is the number of unconstrained
     fit parameters.
 
     Parameters

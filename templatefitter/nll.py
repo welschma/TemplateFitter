@@ -93,7 +93,7 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
 
     .. math::
 
-        f_{ik} = \\frac{\\nu_{ik}(1 + \\theta_{ik} \epsilon{ik})}{\sum \limits_{j=1}^{ n_\mathrm{bins}}\\nu_{jk}(1 + \\theta_{jk}\epsilon{jk})},
+        f_{ik} = \\frac{\\nu_{ik}(1 + \\theta_{ik} \epsilon_{ik})}{\sum \limits_{j=1}^{ n_\mathrm{bins}}\\nu_{jk}(1 + \\theta_{jk}\epsilon_{jk})},
 
     where :math:`\epsilon_{jk}` is the relative uncertainty of template
     :math:`k` in bin :math:`j`.
