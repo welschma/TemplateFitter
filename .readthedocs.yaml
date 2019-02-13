@@ -1,0 +1,13 @@
+version: 2
+
+python:
+  version: 3.6
+  install:
+    - method: pip
+      path: .
+    - requirements: requirements.txt
+
+sphinx:
+  builder: html
+  configuration: conf.py
+  fail_on_warning: true
