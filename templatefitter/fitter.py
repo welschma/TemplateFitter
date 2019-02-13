@@ -12,8 +12,6 @@ __all__ = ["TemplateFitter", "ToyStudy"]
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-# TODO verify if optimization should be done twice where we use the result
-# TODO from the first minimization as starting values for the second one
 class TemplateFitter:
     """This class performs the parameter estimation and calculation
     of a profile likelihood based on a constructed negative log
@@ -21,19 +19,25 @@ class TemplateFitter:
 
     Parameters
     ----------
-    nll : implementation of a AbstractNLL
-        An instance of a class which inherits from AbstractNLL.
-        This represents a negative log likelihood function.
+    hdata : Hist1d
+        Data histogram.
+    templates: StackedTemplate
     """
 
-    def __init__(self, hdata, templates, nll, minimizer_id):
+    def __init__(self, hdata, templates, minimizer_id):
         self._hdata = hdata
         self._templates = templates
-        self._nll = nll(hdata, templates)
+        self._nll = templates.create_nll(hdata)
         self._fit_result = None
         self._minimizer_id = minimizer_id
 
-    def do_fit(self, update_templates=True, get_hesse=True, verbose=False):
+        self.n_templates = self._templates.num_templates
+        self.n_bins = self._templates.num_bins
+
+        self._fixed_parameters = list()
+        self._bound_parameters = dict()
+
+    def do_fit(self, update_templates=True, get_hesse=True, verbose=True, fix_nui_params=False):
         """Performs maximum likelihood fit by minimizing the
         provided negative log likelihoood function.
 
@@ -43,13 +47,19 @@ class TemplateFitter:
         Parameters
         ----------
         update_templates : bool, optional
-            Wether to update the parameters of the given templates
+            Whether to update the parameters of the given templates
             or not. Default is True.
         get_hesse : bool, optional
-            Wether to calculate the Hesse matrix in the estimated
+            Whether to calculate the Hesse matrix in the estimated
             minimum of the negative log likelihood function or not.
-            Can be computionally expensive if the number of parameters
+            Can be computationally expensive if the number of parameters
             in the likelihood is high. Default is True.
+        verbose : bool, optional
+            Whether to print fit information or not. Default is True
+        fix_nui_params : bool, optional
+            Wheter to fix nuissance parameters in the fit or not.
+            Default is False.
+
 
         Returns
         -------
@@ -60,6 +70,18 @@ class TemplateFitter:
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
+
+        if fix_nui_params:
+            for i in range(self.n_templates,
+                           self.n_templates*self.n_bins+self.n_templates):
+                minimizer.set_param_fixed(i)
+
+        for param_id in self._fixed_parameters:
+            minimizer.set_param_fixed(param_id)
+
+        for param_id, bounds in self._bound_parameters.items():
+            minimizer.set_param_bounds(param_id, bounds)
+
         fit_result = minimizer.minimize(
             self._nll.x0, get_hesse=get_hesse, verbose=verbose
         )
@@ -70,6 +92,30 @@ class TemplateFitter:
             )
 
         return fit_result
+
+    def set_parameter_fixed(self, param_id):
+        """Adds parameter to the fixed parameter list.
+
+        Parameters
+        ----------
+        param_id : str or int
+            Parameter identifier.
+        """
+        self._fixed_parameters.append(param_id)
+
+    def set_parameter_bounds(self, param_id, bounds):
+        """Adds parameter and its boundaries to the bound
+        parameter dictionary.
+
+        Parameters
+        ----------
+        param_id : str or int
+            Parameter identifier.
+        boudns : tuple of float
+            Lower and upper boundaries for this parameter.
+        """
+
+        self._bound_parameters[param_id] = bounds
 
     @staticmethod
     def _get_hesse_approx(param_id, fit_result, profile_points):
@@ -132,8 +178,7 @@ class TemplateFitter:
         np.ndarray
             Hesse approximation. Shape is (`num_points`,).
         """
-
-        logging.info(f"Calculating profile likelihood for parameter: '{param_id}'")
+        print(f"\nCalculating profile likelihood for parameter: '{param_id}'")
 
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
@@ -158,7 +203,8 @@ class TemplateFitter:
             initial_values = self._nll.x0
             initial_values[param_index] = point
             minimizer.set_param_fixed(param_id)
-            loop_result = minimizer.minimize(initial_values, get_hesse=False)
+            result = minimizer.minimize(initial_values, get_hesse=False)
+            loop_result = minimizer.minimize(result.params.values, get_hesse=False)
 
             profile_values = np.append(profile_values, loop_result.fcn_min_val)
 
@@ -217,20 +263,17 @@ class ToyStudy:
     ----------
     templates : TemplateCollection
         A instance of the TemplateCollection class.
-    nll
-        A class used as negative log likelihood function.
     """
 
-    def __init__(self, templates, nll, minimizer_id):
+    def __init__(self, templates, minimizer_id):
         self._templates = templates
-        self._nll = nll
         self._mimizer_id = minimizer_id
 
         self._toy_results = {"parameters": [], "uncertainties": []}
 
         self._is_fitted = False
 
-    def do_experiments(self, n_exp=1000):
+    def do_experiments(self, n_exp=1000, max_tries=10):
         """Performs fits using the given template and generated
         toy monte carlo (following a poisson distribution) as data.
 
@@ -238,23 +281,45 @@ class ToyStudy:
         ----------
         n_exp : int
             Number of toy experiments to run.
+        max_tries : int
+            Maximum number of tries for an experiment if a RuntimeError
+            occurs.
         """
 
         self._reset_state()
 
+        print(f"Performing toy study with {n_exp} experiments...")
         for _ in tqdm.tqdm(range(n_exp), desc="Experiments Progress"):
-            htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
-            htoy_data.bin_counts = self._templates.generate_toy_dataset()
-
-            fitter = TemplateFitter(
-                htoy_data, self._templates, self._nll, minimizer_id=self._mimizer_id
-            )
-            result = fitter.do_fit(update_templates=False)
-
-            self._toy_results["parameters"].append(result.params.values)
-            self._toy_results["uncertainties"].append(result.params.errors)
+                self._experiment(max_tries)
 
         self._is_fitted = True
+
+    def _experiment(self, max_tries=10, get_hesse=True):
+        """
+        Helper function for toy experiments.
+        """
+        for _ in range(max_tries):
+            try:
+
+                htoy_data = self._templates.generate_toy_dataset()
+
+                fitter = TemplateFitter(
+                    htoy_data, self._templates, minimizer_id=self._mimizer_id
+                )
+                result = fitter.do_fit(update_templates=False,
+                                       verbose=False,
+                                       get_hesse=get_hesse)
+
+                self._toy_results["parameters"].append(result.params.values)
+                self._toy_results["uncertainties"].append(result.params.errors)
+
+                return None
+
+            except RuntimeError:
+                logging.debug("RuntimeError occured in toy experiment. Trying again")
+                continue
+
+        raise RuntimeError("Experiment exceed max number of retries.")
 
     def do_linearity_test(self, template_id, limits, n_points=10, n_exp=200):
         """Performs a linearity test for the yield parameter of
@@ -279,26 +344,19 @@ class ToyStudy:
         param_fit_errors = list()
         param_points = np.linspace(*limits, n_points)
 
+        print(f"Performing linearity test for parameter: {template_id}")
         for param_point in tqdm.tqdm(param_points, desc="Linearity Test Progress"):
             self._reset_state()
-            self._templates.set_yield(template_id, param_point)
+
+            self._templates[template_id].yield_param_values = param_point
 
             for _ in tqdm.tqdm(range(n_exp), desc="Experiment Progress"):
-                htoy_data = Histogram(self._templates.num_bins, self._templates.limits)
-                htoy_data.bin_counts = self._templates.generate_toy_dataset()
-
-                fitter = TemplateFitter(
-                    htoy_data, self._templates, self._nll, minimizer_id=self._mimizer_id
-                )
-                result = fitter.do_fit(update_templates=False, get_hesse=False)
-
-                self._toy_results["parameters"].append(result.params.values)
-                self._toy_results["uncertainties"].append(result.params.errors)
+                self._experiment(get_hesse=False)
 
             self._is_fitted = True
 
             params, _ = self.get_toy_results(
-                self._templates.template_ids.index(template_id)
+                self._templates.template_names.index(template_id)
             )
             param_fit_results.append(np.mean(params))
             param_fit_errors.append(np.std(params))
@@ -367,7 +425,7 @@ class ToyStudy:
         parameters, uncertainties = self.get_toy_results(param_index)
         # this works only for template yield, for nuissance parameters
         # i have change this
-        expected_yield = self._templates.yield_values[param_index]
+        expected_yield = self._templates.yield_param_values[param_index]
 
         return (parameters - expected_yield) / uncertainties
 

@@ -9,10 +9,12 @@ from collections import namedtuple
 
 import numdifftools as ndt
 import numpy as np
+import pandas as pd
 from iminuit import Minuit
 from scipy.optimize import minimize
+import tabulate
 
-from templatefitter.utility import cov2corr
+from templatefitter.utility import cov2corr, id_to_index
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -45,6 +47,15 @@ class Parameters:
         self._errors = np.zeros(len(names))
         self._covariance = np.zeros((len(names), len(names)))
         self._correlation = np.zeros((len(names), len(names)))
+
+    def __str__(self):
+        data = {
+            "No": list(range(self._nparams)),
+            "Name": self._names,
+            "Value": self._values,
+            "Sym. Err": self.errors
+        }
+        return tabulate.tabulate(data, headers="keys")
 
     def get_param_value(self, param_id):
         """Returns value of parameter specified by `param_id`.
@@ -106,16 +117,7 @@ class Parameters:
         -------
         int
         """
-        if isinstance(param_id, str):
-            param_index = self.names.index(param_id)
-        elif isinstance(param_id, int):
-            param_index = param_id
-        else:
-            raise ValueError(
-                "Specify the parameter either by its name (as str) or by "
-                "its index (as int)."
-            )
-        return param_index
+        return id_to_index(self.names, param_id)
 
     @property
     def names(self):
@@ -387,6 +389,9 @@ class ScipyMinimizer(AbstractMinizer):
             self._params.covariance = np.linalg.inv(hesse)
             self._params.correlation = cov2corr(self._params.covariance)
             self._params.errors = np.sqrt(np.diag(self._params.covariance))
+
+        if verbose:
+            print(self._params)
 
         result = MinimizeResult(opt_result.fun, self._params, self._success)
 
