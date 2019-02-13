@@ -306,7 +306,9 @@ class ToyStudy:
                 fitter = TemplateFitter(
                     htoy_data, self._templates, minimizer_id=self._mimizer_id
                 )
-                result = fitter.do_fit(update_templates=False, get_hesse=get_hesse)
+                result = fitter.do_fit(update_templates=False,
+                                       verbose=False,
+                                       get_hesse=get_hesse)
 
                 self._toy_results["parameters"].append(result.params.values)
                 self._toy_results["uncertainties"].append(result.params.errors)
