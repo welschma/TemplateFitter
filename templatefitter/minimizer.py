@@ -57,7 +57,6 @@ class Parameters:
         }
         return tabulate.tabulate(data, headers="keys")
 
-
     def get_param_value(self, param_id):
         """Returns value of parameter specified by `param_id`.
 

@@ -144,12 +144,11 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
         nuiss_params = x[self._templates.num_templates:]
 
         exp_evts_per_bin = poi @ self._templates.fractions(nuiss_params)
-        #TODO handle empty bins?
-        # exp_evts_per_bin = exp_evts_per_bin[~self._empty]
 
         # this poisson term is taken from Blobel
         poisson_term = np.sum(exp_evts_per_bin - self._d -
                               xlogyx(self._d, exp_evts_per_bin))
+
         gauss_term = 0.5 * (
             nuiss_params @ self._block_diag_inv_corr_mats @ nuiss_params)
 
