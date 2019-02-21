@@ -679,7 +679,7 @@ class StackedTemplate(AbstractTemplate):
             for template, value in zip(self._template_dict.values(), new_values):
                 template.yield_param_values = value
         else:
-            raise ValueError("couln't set yield values")
+            raise ValueError("couldn't set yield values")
 
     @property
     def yield_param_errors(self):
