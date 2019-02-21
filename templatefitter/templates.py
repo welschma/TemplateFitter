@@ -250,7 +250,7 @@ class Template(AbstractTemplate):
             Bin fractions of this template. Shape is (`num_bins`,).
         """
         per_bin_yields = self._hist.bin_counts * (
-            1 + nui_params * self._relative_errors)
+                1 + nui_params * self._relative_errors)
         return per_bin_yields / np.sum(per_bin_yields)
 
     def plot_on(self, ax, **kwargs):
@@ -467,7 +467,7 @@ class StackedTemplate(AbstractTemplate):
         errors = np.sqrt(
             np.sum(
                 np.array([
-                    template.errors()**2
+                    template.errors() ** 2
                     for template in self._template_dict.values()
                 ]),
                 axis=0,
@@ -541,7 +541,7 @@ class StackedTemplate(AbstractTemplate):
         )
 
         uncertainties_sq = np.array(
-            [template.errors()**2 for template in self._template_dict.values()])
+            [template.errors() ** 2 for template in self._template_dict.values()])
         total_uncertainty = np.sqrt(np.sum(uncertainties_sq, axis=0))
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
 
@@ -668,8 +668,18 @@ class StackedTemplate(AbstractTemplate):
 
     @yield_param_values.setter
     def yield_param_values(self, new_values):
-        for template, value in zip(self._template_dict.values(), new_values):
-            template.yield_param_values = value
+        if new_values[0] in self._template_dict:
+            try:
+                tid, val = new_values
+            except TypeError:
+                raise TypeError("couldn't set yield by tid")
+            else:
+                self._template_dict[tid].yield_param_values = val
+        elif len(new_values) == len(self._template_dict):
+            for template, value in zip(self._template_dict.values(), new_values):
+                template.yield_param_values = value
+        else:
+            raise ValueError("couln't set yield values")
 
     @property
     def yield_param_errors(self):

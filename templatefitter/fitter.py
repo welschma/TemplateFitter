@@ -262,11 +262,11 @@ class TemplateFitter:
         print("Perform nominal minimization:")
         fit_result = minimizer.minimize(self._nll.x0, verbose=verbose)
 
-        if fit_result.params["yield_" + tid][0] < 0:
+        if fit_result.params[tid + "_yield"][0] < 0:
             return 0
 
         # set signal of template specified by param_id to zero and profile the likelihood
-        self._templates.set_yield(tid, 0)
+        self._templates.yield_param_values = (tid, 0)
 
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
