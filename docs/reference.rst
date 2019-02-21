@@ -61,6 +61,37 @@ ToyStudy
 .. autoclass:: templatefitter.ToyStudy
     :members:
 
+Minimizer Module
+################
+
+MinimizeResult
+""""""""""""""
+.. autoattribute:: templatefitter.MinimizeResult
+    :members:
+
+Parameters
+""""""""""
+.. autoclass:: templatefitter.Parameters
+    :members:
+
+AbstractMinimizer
+"""""""""""""""""
+Defines the interface of the minizers methods
+.. autoclass:: templatefitter.AbstractMinimizer
+    :members:
+
+IminuitMinimizer
+""""""""""""""""
+.. autoclass:: templatefitter.IMinuitMinimizer
+    :members:
+    :inherited-members:
+
+ScipyMinimizer
+""""""""""""""""
+.. autoclass:: templatefitter.ScipyMinimizer
+    :members:
+    :inherited-members:
+
 Stats Module
 ############
 .. automodule:: templatefitter.stats

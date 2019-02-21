@@ -20,7 +20,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
     "Parameters",
-    "AbstractMinizer",
+    "AbstractMinimizer",
     "IMinuitMinimizer",
     "ScipyMinimizer",
     "minimizer_factory",
@@ -187,7 +187,7 @@ MinimizeResult.succes.__doc__ = """bool: Whether or not the optimizer exited
 successfully."""
 
 
-class AbstractMinizer(ABC):
+class AbstractMinimizer(ABC):
     def __init__(self, fcn, param_names):
         self._fcn = fcn
         self._params = Parameters(param_names)
@@ -273,7 +273,7 @@ class AbstractMinizer(ABC):
         return self._params.correlation
 
 
-class IMinuitMinimizer(AbstractMinizer):
+class IMinuitMinimizer(AbstractMinimizer):
     def __init__(self, fcn, param_names):
         super().__init__(fcn, param_names)
         self._fixed_params = [False for _ in self.params.names]
@@ -316,7 +316,7 @@ class IMinuitMinimizer(AbstractMinizer):
         self._fixed_params = [False for _ in self.params.names]
 
 
-class ScipyMinimizer(AbstractMinizer):
+class ScipyMinimizer(AbstractMinimizer):
     """General wrapper class around scipy.optimize.minimize
     function. Allows mapping of parameter names to the array
     entries used by scipy's `minimize` function.

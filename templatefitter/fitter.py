@@ -19,9 +19,15 @@ class TemplateFitter:
 
     Parameters
     ----------
-    hdata : Hist1d
-        Data histogram.
-    templates: StackedTemplate
+    hdata : Implemented AbstractHist
+        Histogram filled with data events.
+    templates : Implemented AbstractTemplate
+        An instance of a template class that provides a negative
+        log likelihood function via the `create_nll` method.
+    minimizer_id : str
+        A string specifying the method to be used for  the
+        minimization of the Likelihood function. Available are
+        'scipy' and 'iminuit'.
     """
 
     def __init__(self, hdata, templates, minimizer_id):
@@ -41,29 +47,26 @@ class TemplateFitter:
         """Performs maximum likelihood fit by minimizing the
         provided negative log likelihoood function.
 
-        The log likelihood is minimized using the scipy's minimize
-        function with the 'SLSQP' method.
-
         Parameters
         ----------
         update_templates : bool, optional
             Whether to update the parameters of the given templates
             or not. Default is True.
-        get_hesse : bool, optional
-            Whether to calculate the Hesse matrix in the estimated
-            minimum of the negative log likelihood function or not.
-            Can be computationally expensive if the number of parameters
-            in the likelihood is high. Default is True.
         verbose : bool, optional
             Whether to print fit information or not. Default is True
         fix_nui_params : bool, optional
             Wheter to fix nuissance parameters in the fit or not.
             Default is False.
-
+        get_hesse : bool, optional
+            Whether to calculate the Hesse matrix in the estimated
+            minimum of the negative log likelihood function or not.
+            Can be computationally expensive if the number of parameters
+            in the likelihood is high. It is only needed for the scipy
+            minimization method. Default is True.
 
         Returns
         -------
-        MinimizeResult
+        MinimizeResult : namedtuple
             A namedtuple with the most important informations about the
             minimization.
         """
@@ -165,7 +168,7 @@ class TemplateFitter:
         sigma : float
             Defines the width of the scan. The scan range is given by
             sigma*uncertainty of the given parameter.
-        subtract_min : bool
+        subtract_min : bool, optional
             Wether to subtract the estimated minimum of the negative
             log likelihood function or not. Default is True.
 
@@ -218,6 +221,24 @@ class TemplateFitter:
         """Calculate significance for yield parameter of template
         specified by `tid` using the profile likelihood ratio.
 
+        The significance is base on the profile likelihood ratio
+
+        .. math::
+
+            \lambda(\\nu) = \\frac{L(\\nu, \hat{\hat{\\theta}})}{L(\hat{\\nu}, \hat{\\theta})},
+
+        where :math:`\hat{\hat{\\theta}}` maximizes :math:`L`
+        for a specified :math:`\\nu` and :math:`(\hat{\\nu}, \hat{\\theta})`
+        maximizes :math:`L` totally.
+
+        The test statistic used for discovery is
+
+        .. math::
+
+            q_0 = \left\{ \\begin{array}{lr} -2\log(\lambda(0)) & \hat{\\nu} \ge 0,\\\\ 0 & \hat{\\nu} < 0 \end{array} \\right.
+
+
+
         Parameters
         ----------
         tid : str
@@ -229,11 +250,16 @@ class TemplateFitter:
         significance : float
             Fit significance for the yield parameter in gaussian
             standard deviations.
+
         """
+
+        # perform the nominal minimization
 
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
+
+        print("Perform nominal minimization:")
         fit_result = minimizer.minimize(self._nll.x0, verbose=verbose)
 
         if fit_result.params["yield_" + tid][0] < 0:
@@ -242,12 +268,13 @@ class TemplateFitter:
         # set signal of template specified by param_id to zero and profile the likelihood
         self._templates.set_yield(tid, 0)
 
-        logging.debug(f"starting values for minimization: {self._nll.x0}")
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
-        minimizer.set_param_fixed("yield_" + tid)
+        minimizer.set_param_fixed(tid + "_yield")
+        print("Background")
         profile_result = minimizer.minimize(self._nll.x0, verbose=verbose)
+
         q0 = 2 * (profile_result.fcn_min_val - fit_result.fcn_min_val)
         logging.debug(f"q0: {q0}")
         return np.sqrt(q0)
