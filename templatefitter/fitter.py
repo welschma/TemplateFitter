@@ -268,7 +268,6 @@ class TemplateFitter:
         # set signal of template specified by param_id to zero and profile the likelihood
         self._templates.set_yield(tid, 0)
 
-asjkldfjhuasdgfhs
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
