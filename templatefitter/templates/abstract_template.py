@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+
 __all__ = [
     "AbstractTemplate",
     "TemplateParameter"

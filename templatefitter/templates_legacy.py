@@ -735,5 +735,4 @@ class StackedTemplate(AbstractTemplate):
         return self._template_dict[tid]
 
 
-class MulitChannelTemplate(AbstractTemplate):
 
