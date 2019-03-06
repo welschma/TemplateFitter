@@ -21,7 +21,7 @@ from templatefitter.nll import StackedTemplateNegLogLikelihood
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
-    "AbstractTemplate", "Template", "StackedTemplate", "SimultaneousTemplate"
+    "AbstractTemplate", "Template", "StackedTemplate"
 ]
 
 
@@ -492,7 +492,7 @@ class StackedTemplate(AbstractTemplate):
 
         Parameters
         ----------
-        nuiss_params : numpy.ndarray
+        nuiss_params:  numpy.ndarray
             Array of nuissance parameter values needed for the evaluation
             of the AdvancedTemplateModel `bin_fraction` method.
 
@@ -735,5 +735,5 @@ class StackedTemplate(AbstractTemplate):
         return self._template_dict[tid]
 
 
-class SimultaneousTemplate(AbstractTemplate):
-    pass
+class MulitChannelTemplate(AbstractTemplate):
+
