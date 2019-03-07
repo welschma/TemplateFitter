@@ -6,14 +6,11 @@ from functools import lru_cache
 from typing import Tuple, List
 
 import numpy as np
-import pandas as pd
 import scipy.stats
-import matplotlib.pyplot
 
 from templatefitter.histogram import Hist1d
 from templatefitter.utility import cov2corr
 from templatefitter.templates import AbstractTemplate, TemplateParameter
-from templatefitter.nll import StackedTemplateNegLogLikelihood
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 

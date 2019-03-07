@@ -53,3 +53,12 @@ class TestHist1d(unittest.TestCase):
 
         np.testing.assert_array_equal(iris_hist.bin_counts, iris_bc)
         np.testing.assert_array_equal(iris_hist.bin_edges, iris_be)
+
+    def test_from_binned_data(self):
+        bins = np.linspace(0, 10, 11)
+        iris_bc, iris_be = np.histogram(self.iris_sepal_length, bins=bins)
+
+        iris_hist = Hist1d.from_binned_data(iris_bc, iris_be)
+
+        np.testing.assert_array_equal(iris_hist.bin_counts, iris_bc)
+        np.testing.assert_array_equal(iris_hist.bin_edges, iris_be)

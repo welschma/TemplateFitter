@@ -7,18 +7,14 @@ __all__ = [
     "AbstractHist"
 ]
 
+
 class AbstractHist(ABC):
     """Abstract histogram class. Used as base class by all histogram
     implementations.
     """
 
     def __init__(self):
-        self._bin_counts = None
-        self._bin_errors_sq = None
-        self._bin_edges = None
-        self._bin_mids = None
-        self._bin_widths = None
-        self._num_bins = None
+        pass
 
     @property
     @abstractmethod
@@ -51,7 +47,7 @@ class AbstractHist(ABC):
         pass
 
     @property
+    @abstractmethod
     def num_bins(self):
-        """int: Number of bins."""
-        return self._num_bins
+        pass
 
