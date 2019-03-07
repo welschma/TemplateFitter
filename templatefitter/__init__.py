@@ -1,5 +1,4 @@
 from templatefitter.histogram import *
-from templatefitter.templates import *
 from templatefitter.nll import *
 from templatefitter.fitter import *
 from templatefitter.minimizer import *

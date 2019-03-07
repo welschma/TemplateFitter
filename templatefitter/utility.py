@@ -1,6 +1,6 @@
 import numpy as np
 
-__all__ = ["cov2corr", "corr2cov"]
+__all__ = ["cov2corr", "corr2cov", "get_systematic_cov_mat"]
 
 
 def cov2corr(cov):
@@ -69,3 +69,24 @@ def id_to_index(names, param_id):
             "its index (as int)."
         )
     return param_index
+
+
+def get_systematic_cov_mat(hnom, hup, hdown):
+    """Calculates covariance matrix from systematic variations
+    for a histogram.
+
+    Returns
+    -------
+    Covariance Matrix : numpy.ndarray
+        Shape is (`num_bins`, `num_bins`).
+    """
+    sign = np.ones_like(hup)
+    mask = hup < hdown
+    sign[mask] = -1
+
+    diff_up = np.abs(hup - hnom)
+    diff_down = np.abs(hdown - hnom)
+    diff_sym = (diff_up + diff_down) / 2
+    signed_diff = sign*diff_sym
+
+    return np.outer(signed_diff, signed_diff)
