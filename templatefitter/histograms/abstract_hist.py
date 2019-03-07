@@ -1,6 +1,6 @@
 """Defines the interface for all histogram classes.
 """
-
+import numpy as np
 from abc import ABC, abstractmethod
 
 __all__ = [
@@ -14,27 +14,39 @@ class AbstractHist(ABC):
     """
 
     def __init__(self):
+        self._bin_counts = None
+        self._bin_errors_sq = None
+        self._bin_edges = None
+        self._num_bins = None
+
+    @abstractmethod
+    def fill(self, data, weights):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def from_binned_data(cls, bin_counts, bin_edges, bin_errors=None):
         pass
 
     @property
-    @abstractmethod
     def bin_counts(self):
-        pass
+        return self._bin_counts
 
     @property
-    @abstractmethod
     def bin_errors(self):
-        pass
+        return np.sqrt(self.bin_errors_sq)
 
     @property
-    @abstractmethod
+    def num_bins(self):
+        return self._num_bins
+
+    @property
     def bin_errors_sq(self):
-        pass
+        return self._bin_errors_sq
 
     @property
-    @abstractmethod
     def bin_edges(self):
-        pass
+        return self._bin_edges
 
     @property
     @abstractmethod
@@ -46,8 +58,4 @@ class AbstractHist(ABC):
     def bin_widths(self):
         pass
 
-    @property
-    @abstractmethod
-    def num_bins(self):
-        pass
 
