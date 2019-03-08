@@ -38,6 +38,10 @@ class AbstractTemplate(ABC):
         return self._name
 
     @property
+    def num_bins(self):
+        return self._num_bins
+
+    @property
     def params(self):
         """numpy.ndarray: Array of template parameters.
         The first entry is the yield, the rest are the

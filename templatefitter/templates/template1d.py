@@ -11,6 +11,8 @@ __all__ = ["Template1d"]
 
 
 class Template1d(AbstractTemplate):
+    """A 1d template class.
+    """
     def __init__(
         self,
         name,
