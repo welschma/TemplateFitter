@@ -359,6 +359,8 @@ class TestHist2d(unittest.TestCase):
         np.testing.assert_array_equal(hiris.x_edges, be_x)
         np.testing.assert_array_equal(hiris.y_edges, be_y)
 
+        self.assertEqual(hiris.shape, bc.shape)
+
         for obs, exp in zip(hiris.bin_edges, [be_x, be_y]):
             np.testing.assert_array_equal(obs, exp)
 

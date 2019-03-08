@@ -19,6 +19,8 @@ class AbstractHist(ABC):
         self._bin_edges = None
         self._num_bins = None
 
+        self._shape = None
+
     @abstractmethod
     def fill(self, data, weights):
         pass
@@ -49,6 +51,10 @@ class AbstractHist(ABC):
         return self._bin_edges
 
     @property
+    def shape(self):
+        return self._shape
+
+    @property
     @abstractmethod
     def bin_mids(self):
         pass
@@ -57,5 +63,6 @@ class AbstractHist(ABC):
     @abstractmethod
     def bin_widths(self):
         pass
+
 
 

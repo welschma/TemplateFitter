@@ -19,6 +19,7 @@ class Hist1d(AbstractHist):
         self._init_bin_edges(bins, range)
         self._bin_counts = np.zeros(self.num_bins)
         self._bin_errors_sq = np.zeros(self.num_bins)
+        self._shape = self._bin_counts.shape
 
         if data is not None:
             self.fill(data, weights)

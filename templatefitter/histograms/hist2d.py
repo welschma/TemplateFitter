@@ -19,6 +19,7 @@ class Hist2d(AbstractHist):
         self._init_bin_edges(bins, range)
         self._bin_counts = np.zeros(self._num_bins)
         self._bin_errors_sq = np.zeros(self._num_bins)
+        self._shape = self._bin_counts.shape
 
         if data is not None:
             self.fill(data, weights)
@@ -55,9 +56,6 @@ class Hist2d(AbstractHist):
             statistic="sum",
             bins=self._bin_edges,
         )[0]
-
-        self.x_projection.cache_clear()
-        self.y_projection.cache_clear()
 
     @classmethod
     def from_binned_data(cls, bin_counts, bin_edges, bin_errors=None):
@@ -110,7 +108,6 @@ class Hist2d(AbstractHist):
     def y_edges(self):
         return self._bin_edges[1]
 
-    @lru_cache()
     def x_projection(self):
         return Hist1d.from_binned_data(
             np.sum(self.bin_counts, axis=1),
@@ -118,7 +115,6 @@ class Hist2d(AbstractHist):
             np.sqrt(np.sum(self._bin_errors_sq, axis=1))
         )
 
-    @lru_cache()
     def y_projection(self):
         return Hist1d.from_binned_data(
             np.sum(self.bin_counts, axis=0),
