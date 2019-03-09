@@ -1,6 +1,6 @@
 import numpy as np
 
-__all__ = ["cov2corr", "corr2cov", "get_systematic_cov_mat"]
+__all__ = ["cov2corr", "corr2cov", "xlogyx", "get_systematic_cov_mat"]
 
 
 def cov2corr(cov):
@@ -71,6 +71,14 @@ def id_to_index(names, param_id):
     return param_index
 
 
+def xlogyx(x, y):
+    """Compute :math:`x*log(y/x)`to a good precision when :math:`y~x`.
+    The xlogyx function is taken from https://github.com/scikit-hep/probfit/blob/master/probfit/_libstat.pyx.
+    """
+    result = np.where(x < y, x * np.log1p((y - x) / x), -x * np.log1p((x - y) / y))
+    return np.nan_to_num(result)
+
+
 def get_systematic_cov_mat(hnom, hup, hdown):
     """Calculates covariance matrix from systematic variations
     for a histogram.
@@ -87,6 +95,6 @@ def get_systematic_cov_mat(hnom, hup, hdown):
     diff_up = np.abs(hup - hnom)
     diff_down = np.abs(hdown - hnom)
     diff_sym = (diff_up + diff_down) / 2
-    signed_diff = sign*diff_sym
+    signed_diff = sign * diff_sym
 
     return np.outer(signed_diff, signed_diff)
