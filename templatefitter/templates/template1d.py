@@ -30,6 +30,7 @@ class Template1d(AbstractTemplate):
         self._hist = Hist1d(bins=num_bins, range=range, data=data, weights=weights)
         self._flat_bin_counts = self._hist.bin_counts.flatten()
         self._flat_bin_errors_sq = self._hist.bin_errors_sq.flatten()
+        self._bins = num_bins
         self._num_bins = num_bins
         self._range = range
 

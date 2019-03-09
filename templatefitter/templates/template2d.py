@@ -23,7 +23,7 @@ class Template2d(AbstractTemplate):
             self,
             name,
             vars,
-            num_bins,
+            bins,
             range,
             data=None,
             weights=None,
@@ -34,10 +34,11 @@ class Template2d(AbstractTemplate):
     ):
         super(Template2d, self).__init__(name=name)
 
-        self._hist = Hist2d(bins=num_bins, range=range, data=data, weights=weights)
+        self._hist = Hist2d(bins=bins, range=range, data=data, weights=weights)
         self._flat_bin_counts = self._hist.bin_counts.flatten()
         self._flat_bin_errors_sq = self._hist.bin_errors_sq.flatten()
-        self._num_bins = reduce(lambda x, y: x*y, num_bins)
+        self._bins = bins
+        self._num_bins = reduce(lambda x, y: x*y, bins)
         self._range = range
 
         self._init_params()

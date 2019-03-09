@@ -8,7 +8,7 @@ from templatefitter.utility import cov2corr, get_systematic_cov_mat
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-__all__ = ["AbstractTemplate"]
+__all__ = ["AbstractTemplate", "template_compatible", "hist_compatible"]
 
 
 class AbstractTemplate(ABC):
@@ -20,7 +20,9 @@ class AbstractTemplate(ABC):
         self._name = name
         self._params = None
         self._default_yield = None
+        self._bins = None
         self._num_bins = None
+        self._range = None
         self._hist = None
         self._flat_bin_counts = None
         self._flat_bin_errors_sq = None
@@ -39,7 +41,23 @@ class AbstractTemplate(ABC):
 
     @property
     def num_bins(self):
+        """int: Number of bins."""
         return self._num_bins
+
+    @property
+    def shape(self):
+        """tuple of int: Template shape."""
+        return self._hist.shape
+
+    @property
+    def bins(self):
+        """int or tuple of int: Number of bins."""
+        return self._bins
+
+    @property
+    def range(self):
+        """"""
+        return self._range
 
     @property
     def params(self):
@@ -54,7 +72,7 @@ class AbstractTemplate(ABC):
 
         if new_values.shape != self._params.shape:
             raise RuntimeError(
-                "Shape of new parameter array is not compatible" " to this template."
+                "Shape of new parameter array is not compatible to this template."
             )
 
         self._params = new_values
@@ -65,11 +83,28 @@ class AbstractTemplate(ABC):
         """
         return self._params[0]
 
+    @yield_param.setter
+    def yield_param(self, new_value):
+        if not (isinstance(new_value, float) or isinstance(new_value, int)):
+            raise RuntimeError("Yield parameter has to be of type float.")
+
+        self._params[0] = new_value
+
     @property
     def nui_params(self):
         """numpy.ndarray: The current nuissance parameters.
         """
         return self._params[1:]
+
+    @nui_params.setter
+    def nui_params(self, new_values):
+
+        if new_values.shape != (self.num_bins,):
+            raise RuntimeError(
+                "Shape of new nuissance parameters not compatible to this template."
+            )
+
+        self._params[1:] = new_values
 
     def reset(self):
         """Resets parameter to the original values.
@@ -130,7 +165,7 @@ class AbstractTemplate(ABC):
             Bin fractions of this template. Shape is (`num_bins`,).
         """
         per_bin_yields = self._flat_bin_counts * (
-            1 + nui_params * self._relative_errors
+            1. + nui_params * self._relative_errors
         )
         return per_bin_yields / np.sum(per_bin_yields)
 
@@ -171,6 +206,56 @@ class AbstractTemplate(ABC):
         """
         return self._relative_errors.reshape(self._hist.shape) * self.values
 
+    @property
+    def cov_mat(self):
+        return self._cov
+
+    @property
+    def cov_mats(self):
+        return self._cov_mats
+
+    @property
+    def corr(self):
+        return self._corr
+
+    @property
+    def inv_corr_mat(self):
+        return self._inv_corr
+
     @abstractmethod
     def add_variation(self, data, weights_up, weights_down):
         pass
+
+
+def template_compatible(temp1, temp2):
+    """Checks if two templates are compatible by comparing the
+    number of bins and the range of the templates.
+
+    Returns
+    -------
+    bool
+    """
+
+    num_bins_cond = (temp1.num_bins == temp2.num_bins)
+    shape_cond = (temp1.shape == temp2.shape)
+    range_cond = (temp1.range == temp2.range)
+
+    return num_bins_cond and range_cond and shape_cond
+
+
+def hist_compatible(temp, hist):
+    """Checks if a histogram and template are compatible by comparing
+    their number of bins, shape and range.
+
+    Returns
+    -------
+    bool
+    """
+    num_bins_cond = (temp.num_bins == hist.num_bins)
+    shape_cond = (temp.shape == hist.shape)
+    range_cond = (temp.range == hist.range)
+
+    return num_bins_cond and range_cond and shape_cond
+
+
+
