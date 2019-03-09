@@ -18,6 +18,9 @@ __all__ = [
 
 
 class Channel:
+    """
+    TODO
+    """
 
     def __init__(self, name):
         self._name = name
@@ -38,6 +41,18 @@ class Channel:
         return self._num_templates
 
     def add_template(self, process, template, efficiency=1.):
+        """Adds a template for a specified process to the template.
+
+        Parameters
+        ----------
+        process: str
+            Process name.
+        template: Template1d or Template2d
+            A valid template instance (has to inherit from
+            AbstractTemplate).
+        efficiency: float
+            Efficiency of the process to this channel.
+        """
 
         if not self._process_list:
             self._add_template(process, template, efficiency)
@@ -51,6 +66,14 @@ class Channel:
             raise RuntimeError("Trying to add a non compatible template with the Channel.")
 
     def add_data(self, hdata):
+        """Adds a binned dataset to this channel.
+
+        Parameters
+        ----------
+        hdata: Hist1d or Hist2d
+            A valid histogram instance (has to inherit from
+            AbstractHist).
+        """
 
         if not (self._bins and self._range):
             raise RuntimeError("You have to add at least one template before the "
@@ -93,6 +116,7 @@ class Channel:
 
         return fractions_per_template
 
+    # TODO add efficiency to this term !!!!!!!!!!
     def _expected_evts_per_bin(self, process_yields, nui_params):
         return process_yields @ self._fractions(nui_params)
 
@@ -106,7 +130,22 @@ class Channel:
         inv_corr_mat = self._create_block_diag_inv_corr_mat()
         return 0.5 * (nui_params @ inv_corr_mat @ nui_params)
 
-    def nll_contibution(self, process_yields, nui_params):
+    def nll_contiribution(self, process_yields, nui_params):
+        """Calculates the contribution to the binned negative log
+        likelihood function of this channel.
+
+        Parameters
+        ----------
+        process_yields: numpy.ndarray
+            An array holding the yield values for the processes in
+            this channel. The order has to match order of the
+            templates that have been added to the template. Shape is
+            (`num_processes`).
+
+        Returns
+        -------
+        float
+        """
         data = self._hdata.bin_counts
         exp_evts_per_bin = self._expected_evts_per_bin(process_yields, nui_params)
         poisson_term = np.sum(exp_evts_per_bin - data -
