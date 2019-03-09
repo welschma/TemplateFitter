@@ -48,8 +48,10 @@ y = np.array(
 
 bins = (10, 10)
 range = ((2, 9), (1, 5))
-template = Template2d("2dIris", "length", "width",
+template = Template2d("2dIris", ("length", "width"),
                       bins, range, data=(x, y), color="gold")
+
+template.yield_param = 1000.
 
 fig, ax = plt.subplots(1, 1, dpi=200, figsize=(4,4))
 template.plot_y_projection_on(ax)
