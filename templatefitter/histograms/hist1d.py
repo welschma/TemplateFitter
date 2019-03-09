@@ -13,12 +13,12 @@ __all__ = [
 class Hist1d(AbstractHist):
     """A 1 dimensional histogram.
     """
-    def __init__(self, bins, data=None, weights=None, range=None):
-        super().__init__()
+    def __init__(self, bins, range=None, data=None, weights=None):
+        super(Hist1d, self).__init__()
 
         self._init_bin_edges(bins, range)
-        self._bin_counts = np.zeros(self.num_bins)
-        self._bin_errors_sq = np.zeros(self.num_bins)
+        self._bin_counts = np.zeros(self._num_bins)
+        self._bin_errors_sq = np.zeros(self._num_bins)
         self._shape = self._bin_counts.shape
 
         if data is not None:

@@ -35,7 +35,6 @@ class Hist2d(AbstractHist):
 
         else:
             self._num_bins = tuple(len(edges) - 1 for edges in bins)
-            print(self._num_bins)
             self._bin_edges = bins
             self._range = tuple(map(get_bin_range, bins))
 
