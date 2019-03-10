@@ -167,7 +167,9 @@ class AbstractTemplate(ABC):
         per_bin_yields = self._flat_bin_counts * (
             1. + nui_params * self._relative_errors
         )
-        return per_bin_yields / np.sum(per_bin_yields)
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.nan_to_num(per_bin_yields / np.sum(per_bin_yields))
 
     def _add_cov_mat(self, hup, hdown):
         """Helper function. Calculates a covariance matrix from
