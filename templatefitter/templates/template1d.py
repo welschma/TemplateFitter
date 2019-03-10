@@ -17,22 +17,19 @@ class Template1d(AbstractTemplate):
         self,
         name,
         variable,
-        num_bins,
-        range,
-        data=None,
-        weights=None,
+        hist1d,
         color=None,
         pretty_variable=None,
         pretty_label=None,
     ):
         super(Template1d, self).__init__(name=name)
 
-        self._hist = Hist1d(bins=num_bins, range=range, data=data, weights=weights)
+        self._hist = hist1d
         self._flat_bin_counts = self._hist.bin_counts.flatten()
         self._flat_bin_errors_sq = self._hist.bin_errors_sq.flatten()
-        self._bins = num_bins
-        self._num_bins = num_bins
-        self._range = range
+        self._bins = hist1d.shape
+        self._num_bins = hist1d.num_bins
+        self._range = hist1d.range
 
         self._init_params()
         self._init_errors()

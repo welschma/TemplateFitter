@@ -28,7 +28,16 @@ class TestHist1d(unittest.TestCase):
          self.bins = 10
          self.range = (2, 7)
          self.hist = Hist1d(bins=self.bins, range=self.range, data=self.data)
-         self.template = Template1d("test", "test_var", self.bins, self.range, data=self.data)
+         self.template = Template1d("test", "test_var", self.hist)
+
+    def test_empty_template(self):
+        hist = Hist1d(bins=self.bins, range=self.range)
+        template = Template1d("test", "test_var", hist)
+
+        np.testing.assert_array_equal(template.values, hist.bin_counts)
+        np.testing.assert_array_equal(template.errors, np.zeros(self.bins))
+        np.testing.assert_array_equal(template.fractions(np.zeros(self.bins)), np.zeros(self.bins))
+
 
     def test_values(self):
         np.testing.assert_array_almost_equal(self.template.values, self.hist.bin_counts)
