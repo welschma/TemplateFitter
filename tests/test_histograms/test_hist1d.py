@@ -23,6 +23,10 @@ class TestHist1d(unittest.TestCase):
              6.8, 6.7, 6.7, 6.3, 6.5, 6.2, 5.9]
         )
 
+    def test_empty_hist(self):
+        pass
+
+
     def test_hist_from_int_bin(self):
         nbins = 10
         range = (0, 10)
@@ -31,6 +35,8 @@ class TestHist1d(unittest.TestCase):
 
         np.testing.assert_array_equal(iris_hist.bin_counts, iris_bc)
         np.testing.assert_array_equal(iris_hist.bin_edges, iris_be)
+
+        self.assertFalse(iris_hist.is_empty)
 
     def test_shape(self):
         nbins = 10
@@ -93,6 +99,7 @@ class TestHist1d(unittest.TestCase):
             self.iris_sepal_length, weights=weights, bins=bins
         )
         iris_hist = Hist1d(bins=bins)
+        self.assertTrue(iris_hist.is_empty)
         iris_hist.fill(self.iris_sepal_length, weights)
 
         np.testing.assert_array_almost_equal(iris_hist.bin_counts, iris_bc)
