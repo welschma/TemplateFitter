@@ -31,32 +31,41 @@ class TestChannel(unittest.TestCase):
 
         self.bins = 10
         self.range = (3, 8)
+        self.variable = "length"
 
+        hsetosa = Hist1d(self.bins, range=self.range, data=setosa)
         self.tsetosa = Template1d(
-            "setosa", "length", self.bins, self.range, data=setosa
+            "setosa", "length", hsetosa
         )
+        hversico = Hist1d(self.bins, range=self.range, data=versicolor)
         self.tversico = Template1d(
-            "versicolor", "length", self.bins, self.range, data=versicolor
+            "versicolor", "length", hversico
         )
+        hvirgini = Hist1d(self.bins, range=self.range, data=virginica)
         self.tvirgini = Template1d(
-            "virginica", "length", self.bins, self.range, data=virginica
+            "virginica", "length", hvirgini
         )
 
-        self.channel = Channel("test")
+        self.channel = Channel("test", self.variable, self.bins, self.range)
 
         self.processes = ["setosa", "versicolor", "virginica"]
         self.templates = [self.tsetosa, self.tversico, self.tvirgini]
         self.num_templates = len(self.templates)
+        self.efficiencies = 0.8
         for process, template in zip(self.processes, self.templates):
-            self.channel.add_template(process, template)
+            self.channel.add_template(
+                process, template, efficiency=self.efficiencies
+            )
 
     def test_num_templates(self):
         self.assertEqual(self.channel.num_templates, len(self.templates))
 
     def test_add_non_comp_template(self):
         with self.assertRaises(RuntimeError) as e:
+            hsetosa = Hist1d( 5, (3, 4), data=setosa)
             self.channel.add_template(
-                'bla', Template1d('test', 'test', 5, (3, 4), data=setosa))
+                'bla', Template1d('test', 'test', hsetosa)
+            )
 
         self.assertEqual("Trying to add a non compatible template with the Channel.",
                          str(e.exception))
@@ -66,13 +75,10 @@ class TestChannel(unittest.TestCase):
         self.channel.add_data(hiris)
 
     def test_add_data_wo_templates(self):
-        empty_channel = Channel("test_empty")
+        empty_channel = Channel("test_empty", self.variable, self.bins, self.range)
         hiris = Hist1d(self.bins, range=self.range, data=iris_data)
-        with self.assertRaises(RuntimeError) as e:
-            empty_channel.add_data(hiris)
+        empty_channel.add_data(hiris)
 
-        self.assertEqual("You have to add at least one template before the data.",
-                         str(e.exception))
 
     def test_add_not_comp_data(self):
         hiris = Hist1d(2, range=self.range, data=iris_data)
@@ -95,6 +101,12 @@ class TestChannel(unittest.TestCase):
         hiris = Hist1d(self.bins, range=self.range, data=iris_data)
         self.channel.add_data(hiris)
 
-        nll_contrib = self.channel.nll_contibution(yields, nui_params)
-        print(nll_contrib)
+        nll_contrib = self.channel.nll_contribution(yields, nui_params)
         self.assertEqual(type(nll_contrib), np.float64)
+
+    def test_efficiency_array(self):
+        expected = np.full((self.num_templates,), self.efficiencies)
+
+        np.testing.assert_array_equal(
+            self.channel._get_efficiency(), expected
+        )

@@ -22,23 +22,39 @@ class Channel:
     TODO
     """
 
-    def __init__(self, name):
+    def __init__(self, name, variable, bins, range):
         self._name = name
 
         self._template_dict = OrderedDict()
         self._efficiency_dict = OrderedDict()
-        self._process_list = list()
-        self._bins = None
-        self._num_bins = None
-        self._range = None
+        self._process_set = set()
+        self._variable = variable
+        self._bins = bins if isinstance(bins, tuple) else (bins,)
+        self._range = range
         self._hdata = None
 
-        self._num_templates = 0
 
     @property
     def num_templates(self):
         """int: Number of templates/processes in this channel."""
-        return self._num_templates
+        return len(self._process_set)
+
+    @property
+    def bins(self):
+        """list of int: Number of bins."""
+        return self._bins
+
+    @property
+    def range(self):
+        return self._range
+
+    @property
+    def variable(self):
+        return self._variable
+
+    @property
+    def processes(self):
+        return self._process_set
 
     def add_template(self, process, template, efficiency=1.):
         """Adds a template for a specified process to the template.
@@ -54,16 +70,20 @@ class Channel:
             Efficiency of the process to this channel.
         """
 
-        if not self._process_list:
-            self._add_template(process, template, efficiency)
-            self._bins = template.bins
-            self._num_bins = template.num_bins
-            self._range = template.range
-        elif template_compatible(self._template_dict[self._process_list[0]],
-                                 template):
+        if self._check_template(template):
             self._add_template(process, template, efficiency)
         else:
             raise RuntimeError("Trying to add a non compatible template with the Channel.")
+
+    def _check_template(self, template):
+        bins_cond = self._bins == template.bins
+        range_cond = self._range == template.range
+        return bins_cond and range_cond
+
+    def _check_hist(self, hist):
+        bins_cond = self._bins == hist.shape
+        range_cond = self._range == hist.range
+        return bins_cond and range_cond
 
     def add_data(self, hdata):
         """Adds a binned dataset to this channel.
@@ -75,19 +95,15 @@ class Channel:
             AbstractHist).
         """
 
-        if not (self._bins and self._range):
-            raise RuntimeError("You have to add at least one template before the "
-                               "data.")
-        elif hist_compatible(self._template_dict[self._process_list[0]], hdata):
+        if self._check_hist(hdata):
             self._hdata = hdata
         else:
             raise RuntimeError("Given data histogram is not compatible with the Channel.")
 
     def _add_template(self, process, template, efficiency):
-        self._process_list.append(process)
+        self._process_set.add(process)
         self._template_dict[process] = template
         self._efficiency_dict[process] = efficiency
-        self._num_templates += 1
 
     def _fractions(self, nui_params):
         """Evaluates all `bin_fractions` methods of all templates in this
@@ -152,7 +168,7 @@ class Channel:
         inv_corr_mat = self._create_block_diag_inv_corr_mat()
         return 0.5 * (nui_params @ inv_corr_mat @ nui_params)
 
-    def nll_contiribution(self, process_yields, nui_params):
+    def nll_contribution(self, process_yields, nui_params):
         """Calculates the contribution to the binned negative log
         likelihood function of this channel.
 

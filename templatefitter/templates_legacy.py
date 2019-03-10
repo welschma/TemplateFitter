@@ -14,7 +14,7 @@ import pandas as pd
 import scipy.stats
 import matplotlib.pyplot
 
-from templatefitter.histogram import Hist1d
+from templatefitter.histogram_legacy import Hist1d
 from templatefitter.utility import cov2corr
 from templatefitter.nll import StackedTemplateNegLogLikelihood
 
