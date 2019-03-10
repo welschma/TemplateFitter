@@ -116,9 +116,31 @@ class Channel:
 
         return fractions_per_template
 
-    # TODO add efficiency to this term !!!!!!!!!!
+    @lru_cache()
+    def _get_efficiency(self):
+        """Returns the efficiencies of the processes in this channel
+        as `numpy.ndarray`.
+        """
+        return np.array([eff for eff in self._efficiency_dict.values()])
+
     def _expected_evts_per_bin(self, process_yields, nui_params):
-        return process_yields @ self._fractions(nui_params)
+        """Calculates the expected number of events given the process
+        yields and nuissance parameters.
+
+        Parameters
+        ----------
+        process_yields : numpy.ndarray
+            Shape is (`num_processes`,).
+        nui_params : numpy.ndarray
+            Shape is (`num_templates*num_bins`,).
+
+        Returns
+        -------
+        expected_num_evts_per_bin : numpy.ndarray
+            Shape is (`num_bins`,).
+        """
+
+        return (process_yields * self._get_efficiency()) @ self._fractions(nui_params)
 
     @lru_cache()
     def _create_block_diag_inv_corr_mat(self):
