@@ -29,6 +29,10 @@ class Hist1d(AbstractHist):
             self._num_bins = bins
             self._bin_edges = np.linspace(*range, self._num_bins + 1)
             self._range = range
+        elif isinstance(bins, tuple):
+            self._num_bins = bins[0]
+            self._bin_edges = np.linspace(*range, self._num_bins + 1)
+            self._range = range
         else:
             self._num_bins = len(bins) - 1
             self._bin_edges = bins
