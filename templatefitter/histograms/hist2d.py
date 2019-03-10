@@ -55,6 +55,7 @@ class Hist2d(AbstractHist):
             statistic="sum",
             bins=self._bin_edges,
         )[0]
+        self._is_empty = False
 
     @classmethod
     def from_binned_data(cls, bin_counts, bin_edges, bin_errors=None):
@@ -80,7 +81,7 @@ class Hist2d(AbstractHist):
             bin_errors = np.sqrt(bin_counts)
 
         instance._bin_errors_sq = bin_errors ** 2
-
+        instance._is_empty = False
         return instance
 
     @property

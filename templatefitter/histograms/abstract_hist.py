@@ -21,6 +21,8 @@ class AbstractHist(ABC):
         self._shape = None
         self._range = None
 
+        self._is_empty = True
+
     @property
     def bin_counts(self):
         return self._bin_counts
@@ -48,6 +50,10 @@ class AbstractHist(ABC):
     @property
     def range(self):
         return self._range
+
+    @property
+    def is_empty(self):
+        return self._is_empty
 
     @abstractmethod
     def fill(self, data, weights):
