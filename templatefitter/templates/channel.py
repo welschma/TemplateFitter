@@ -75,6 +75,10 @@ class Channel:
         """dict: Returns the template dictionary."""
         return self._template_dict
 
+    @property
+    def efficiencies(self):
+        return self._efficiency_dict
+
     def add_template(self, process, template, efficiency=1.):
         """Adds a template for a specified process to the template.
 
@@ -125,6 +129,13 @@ class Channel:
         channel matching the `outer_process_list`.
         """
         return [outer_process_list.index(process) for process in self.processes]
+
+    def update_parameters(self, yields, nui_params):
+        for template, eff, new_yield, new_nui_params in \
+                zip(self.templates.values(), self.efficiencies.values(),
+                    np.split(yields, self.num_templates), np.split(nui_params, self.num_templates)):
+            template.yield_param = new_yield*eff
+            template.nui_params = new_nui_params
 
     def _add_template(self, process, template, efficiency):
         if process in self.processes:
