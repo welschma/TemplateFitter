@@ -1,6 +1,10 @@
+from itertools import islice
+
 import numpy as np
 
-__all__ = ["cov2corr", "corr2cov", "xlogyx", "get_systematic_cov_mat"]
+
+__all__ = ["cov2corr", "corr2cov", "xlogyx", "get_systematic_cov_mat",
+           "array_split_into"]
 
 
 def cov2corr(cov):
@@ -98,3 +102,18 @@ def get_systematic_cov_mat(hnom, hup, hdown):
     signed_diff = sign * diff_sym
 
     return np.outer(signed_diff, signed_diff)
+
+
+def array_split_into(iterable, sizes):
+    """Yields a list of arrays of size `n` from array iterable
+    for each `n` in `sizes`.
+    """
+
+    itx = iter(iterable)
+
+    for size in sizes:
+        if size is None:
+            yield np.array(list(itx))
+            return
+        else:
+            yield np.array(list(islice(itx, size)))
