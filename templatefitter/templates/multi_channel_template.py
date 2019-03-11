@@ -24,14 +24,14 @@ class MultiChannelTemplate:
         self._channel_dict = OrderedDict()
         self._processes = tuple()
 
-    def define_channel(self, name, variable, bins, range):
+    def define_channel(self, name, bins, range):
         """Creates and stores `Channel` instances in the internal
         channel map.
 
         name : str
             Channel name.
         """
-        ch = Channel(name=name, variable=variable, bins=bins, range=range)
+        ch = Channel(name=name, bins=bins, range=range)
         self._channel_dict[name] = ch
 
     def define_process(self, name):

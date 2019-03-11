@@ -44,7 +44,7 @@ class TestMultiChannelTemplate1d(unittest.TestCase):
 
         for channel_name in self.channels:
             mct.define_channel(
-                name=channel_name, bins=self.bins, range=self.range, variable=self.variable
+                name=channel_name, bins=self.bins, range=self.range
             )
 
         for process in self.processes:
@@ -77,14 +77,14 @@ class TestMultiChannelTemplate1d(unittest.TestCase):
         self.assertTupleEqual(mct.processes, self.processes)
         self.assertDictEqual(mct.channels, {})
 
-        mct.define_channel("test1", "length", self.bins, self.range)
+        mct.define_channel("test1",  self.bins, self.range)
         self.assertListEqual(list(mct.channels.keys()), ["test1"])
 
     def test_add_channel(self):
         mct = MultiChannelTemplate()
 
         for channel in self.channels:
-            mct.define_channel(channel, self.variable, self.bins, self.range)
+            mct.define_channel(channel, self.bins, self.range)
         self.assertTupleEqual(mct.processes, tuple())
         for channel in mct.channels.values():
             self.assertTrue(isinstance(channel, Channel))
@@ -166,7 +166,7 @@ class TestMultiChannelTemplate2d(unittest.TestCase):
 
         for channel_name in self.channels:
             self.mct.define_channel(
-                name=channel_name, bins=self.bins, range=self.range, variable=self.variable
+                name=channel_name, bins=self.bins, range=self.range
             )
 
         for process in self.processes:

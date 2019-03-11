@@ -22,13 +22,12 @@ class Channel:
     TODO
     """
 
-    def __init__(self, name, variable, bins, range):
+    def __init__(self, name, bins, range):
         self._name = name
 
         self._template_dict = OrderedDict()
         self._efficiency_dict = OrderedDict()
         self._processes = tuple()
-        self._variable = variable
         self._bins = bins if isinstance(bins, tuple) else (bins,)
         self._range = range
         self._hdata = None
@@ -63,10 +62,6 @@ class Channel:
     def num_nui_params(self):
         """int: Number of nuissance parameters in this channel."""
         return self.num_templates*self.num_bins
-
-    @property
-    def variable(self):
-        return self._variable
 
     @property
     def processes(self):

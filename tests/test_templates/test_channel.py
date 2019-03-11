@@ -46,7 +46,7 @@ class TestChannel(unittest.TestCase):
             "virginica", "length", hvirgini
         )
 
-        self.channel = Channel("test", self.variable, self.bins, self.range)
+        self.channel = Channel("test", self.bins, self.range)
 
         self.processes = ["setosa", "versicolor", "virginica"]
         self.templates = [self.tsetosa, self.tversico, self.tvirgini]
@@ -56,6 +56,18 @@ class TestChannel(unittest.TestCase):
             self.channel.add_template(
                 process, template, efficiency=self.efficiencies
             )
+
+    def test_update_parameters(self):
+
+        new_yields = np.array([35, 60, 80])
+        new_nui_params = np.random.randn(self.bins*self.num_templates)
+        per_template_nui_params = np.split(new_nui_params, self.num_templates)
+
+        self.channel.update_parameters(new_yields, new_nui_params)
+
+        for i, template in enumerate(self.channel.templates.values()):
+            self.assertEqual(template.yield_param, new_yields[i]*self.efficiencies)
+            np.testing.assert_array_equal(template.nui_params, per_template_nui_params[i])
 
     def test_process_indices(self):
         outer_process_list = ("bla", "virginica", "bla", "setosa", "versicolor")
@@ -80,7 +92,7 @@ class TestChannel(unittest.TestCase):
         self.channel.add_data(hiris)
 
     def test_add_data_wo_templates(self):
-        empty_channel = Channel("test_empty", self.variable, self.bins, self.range)
+        empty_channel = Channel("test_empty", self.bins, self.range)
         hiris = Hist1d(self.bins, range=self.range, data=iris_data)
         empty_channel.add_data(hiris)
 
