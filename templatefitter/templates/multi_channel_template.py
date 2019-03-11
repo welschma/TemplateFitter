@@ -27,29 +27,12 @@ class MultiChannelTemplate:
             Channel name.
         """
         ch = Channel(name=name, variable=variable, bins=bins, range=range)
-
-        if isinstance(bins, int):
-            dim = 1
-        else:
-            dim = len(ch.bins)
-
-        for process in self.processes:
-            hist = self.hist_factory(dim)(bins, range)
-            template = self.template_factory(dim)(process, variable, hist)
-            ch.add_template(process, template)
-
         self._channel_dict[name] = ch
 
     def define_process(self, name):
         """Defines a process """
 
         self._processes.add(name)
-
-        for channel in self._channel_dict.values():
-            dim = len(channel.bins)
-            hist = self.hist_factory(dim)(channel.bins, channel.range)
-            template = self.template_factory(dim)(name, channel.variable, hist)
-            channel.add_template(name, template)
 
     def add_template(self, channel, process, template, efficiency=1.0):
         if channel not in list(self.channels.keys()):
@@ -66,6 +49,7 @@ class MultiChannelTemplate:
             raise RuntimeError(f"Process '{process}' not defined!")
 
         self.channels[channel].add_data(hdata)
+
     @property
     def processes(self):
         """list of str: Names of defined processes."""
@@ -86,33 +70,6 @@ class MultiChannelTemplate:
         """dict: Channel dictionary."""
         return self._channel_dict
 
-    @staticmethod
-    def hist_factory(dim):
-
-        hists = {
-            1: Hist1d,
-            2: Hist2d,
-        }
-
-        if dim not in list(hists.keys()):
-            raise RuntimeError("Only histograms for 1 and 2 dimensions "
-                               "are available.")
-
-        return hists[dim]
-
-    @staticmethod
-    def template_factory(dim):
-
-        templates = {
-            1: Template1d,
-            2: Template2d,
-        }
-
-        if dim not in list(templates.keys()):
-            raise RuntimeError("Only histograms for 1 and 2 dimensions "
-                               "are available.")
-
-        return templates[dim]
 
 
 class NegLogLikelihood:
