@@ -116,11 +116,87 @@ class MultiChannelTemplate:
         per_channel_yields = [yields[channel.process_indices(self.processes)]
                               for channel in self.channels.values()]
 
-class NegLogLikelihood:
+        per_channel_num_nui_params = [channel.num_nui_params for channel in self.channels.values()]
+        per_channel_nui_params = list(array_split_into(nui_params, per_channel_num_nui_params))
 
-    def __init__(self, multi_channel_template):
-        self._mcl = multi_channel_template
+        return per_channel_yields, per_channel_nui_params
+
+    def create_nll(self):
+
+        return NegLogLikelihood(self)
+
+
+class AbstractTemplateCostFunction(ABC):
+    """Abstract base class for all cost function to estimate
+    yields using the template method.
+    """
+
+    def __init__(self):
+        pass
+    # -- abstract properties
+
+    @property
+    @abstractmethod
+    def x0(self):
+        """numpy.ndarray: Starting values for the minimization."""
+        pass
+
+    @property
+    @abstractmethod
+    def param_names(self):
+        """list of str: Parameter names. Used for convenience."""
+        pass
+
+    # -- abstract methods --
+
+    @abstractmethod
+    def __call__(self, x: np.ndarray) -> float:
+        pass
+
+
+class NegLogLikelihood(AbstractTemplateCostFunction):
+
+    def __init__(self, multi_channel_template: MultiChannelTemplate):
+        super().__init__()
+        self._mct = multi_channel_template
+
+    @property
+    def x0(self):
+        """
+
+        :return:
+        """
+        yields = self._mct.process_yields
+        nui_params = self._mct.nui_params
+
+        return np.concatenate((yields, nui_params))
+
+    @property
+    def param_names(self):
+        yield_names = [process + "_yield" for process in self._mct.processes]
+
+        nui_param_names = []
+
+        for ch_name, channel in self._mct.channels.items():
+            per_channel_names = []
+            for temp_name, template in channel.templates.items():
+                per_channel_names.extend([
+                    f"{ch_name}_{temp_name}_bin_{i}" for i in range(template.num_bins)
+                ])
+            nui_param_names.extend(per_channel_names)
+
+        return yield_names + nui_param_names
 
     def __call__(self, x):
-        pass
+
+        ch_yields, ch_nui_params = self._mct.generate_per_channel_parameters(x)
+
+        nll_value = 0
+
+        for channel, yields, nui_params in zip(self._mct.channels.values(), ch_yields, ch_nui_params):
+
+            nll_value += channel.nll_contribution(yields, nui_params)
+
+        return nll_value
+
 

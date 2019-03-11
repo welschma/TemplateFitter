@@ -227,3 +227,13 @@ class TestMultiChannelTemplate2d(unittest.TestCase):
         self.assertEqual(per_channel_nui_params[1].shape,
                          (2*self.num_bins,))
 
+    def test_create_nll(self):
+        nll = self.mct.create_nll()
+        self.assertTrue(isinstance(nll, NegLogLikelihood))
+
+
+
+
+
+
+
