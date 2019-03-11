@@ -57,6 +57,11 @@ class TestChannel(unittest.TestCase):
                 process, template, efficiency=self.efficiencies
             )
 
+    def test_process_indices(self):
+        outer_process_list = ("bla", "virginica", "bla", "setosa", "versicolor")
+        self.assertListEqual(self.channel.process_indices(outer_process_list),
+                             [3, 4, 1])
+
     def test_num_templates(self):
         self.assertEqual(self.channel.num_templates, len(self.templates))
 
@@ -78,7 +83,6 @@ class TestChannel(unittest.TestCase):
         empty_channel = Channel("test_empty", self.variable, self.bins, self.range)
         hiris = Hist1d(self.bins, range=self.range, data=iris_data)
         empty_channel.add_data(hiris)
-
 
     def test_add_not_comp_data(self):
         hiris = Hist1d(2, range=self.range, data=iris_data)

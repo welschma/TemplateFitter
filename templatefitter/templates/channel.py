@@ -1,7 +1,7 @@
 import logging
 
 from collections import OrderedDict
-from functools import lru_cache
+from functools import lru_cache, reduce
 
 import numpy as np
 
@@ -27,26 +27,42 @@ class Channel:
 
         self._template_dict = OrderedDict()
         self._efficiency_dict = OrderedDict()
-        self._process_set = set()
+        self._processes = tuple()
         self._variable = variable
         self._bins = bins if isinstance(bins, tuple) else (bins,)
         self._range = range
         self._hdata = None
 
-
     @property
     def num_templates(self):
         """int: Number of templates/processes in this channel."""
-        return len(self._process_set)
+        return len(self._processes)
 
     @property
     def bins(self):
-        """list of int: Number of bins."""
+        """list of int: Number of bins per dimension."""
         return self._bins
+
+    @property
+    def num_bins(self):
+        """int: Number of bins per template."""
+        return reduce(lambda x, y: x*y, self.bins)
 
     @property
     def range(self):
         return self._range
+
+    @property
+    def has_data(self):
+        if self._hdata is not None:
+            return True
+        else:
+            return False
+
+    @property
+    def num_nui_params(self):
+        """int: Number of nuissance parameters in this channel."""
+        return self.num_templates*self.num_bins
 
     @property
     def variable(self):
@@ -54,7 +70,15 @@ class Channel:
 
     @property
     def processes(self):
-        return self._process_set
+        return tuple(self._template_dict.keys())
+
+    def __getitem__(self, item):
+        return self._template_dict[item]
+
+    @property
+    def templates(self):
+        """dict: Returns the template dictionary."""
+        return self._template_dict
 
     def add_template(self, process, template, efficiency=1.):
         """Adds a template for a specified process to the template.
@@ -100,8 +124,18 @@ class Channel:
         else:
             raise RuntimeError("Given data histogram is not compatible with the Channel.")
 
+    @lru_cache()
+    def process_indices(self, outer_process_list):
+        """Returns a list of indices for the processes in this
+        channel matching the `outer_process_list`.
+        """
+        return [outer_process_list.index(process) for process in self.processes]
+
     def _add_template(self, process, template, efficiency):
-        self._process_set.add(process)
+        if process in self.processes:
+            raise RuntimeError(f"Process {name} already defined.")
+
+        self._processes = (*self._processes, process)
         self._template_dict[process] = template
         self._efficiency_dict[process] = efficiency
 
