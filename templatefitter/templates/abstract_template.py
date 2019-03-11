@@ -85,7 +85,10 @@ class AbstractTemplate(ABC):
 
     @yield_param.setter
     def yield_param(self, new_value):
-        if not (isinstance(new_value, float) or isinstance(new_value, int)):
+        if isinstance(new_value, np.ndarray):
+            if len(new_value) > 1:
+                raise RuntimeError("Yield parameter has to be of type float.")
+        elif not (isinstance(new_value, float) or isinstance(new_value, int)):
             raise RuntimeError("Yield parameter has to be of type float.")
 
         self._params[0] = new_value
