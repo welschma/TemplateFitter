@@ -46,7 +46,7 @@ class MultiChannelTemplate:
             raise RuntimeError(f"Channel '{channel}' not defined!")
         if process not in self.processes:
             raise RuntimeError(f"Process '{process}' not defined!")
-        
+
         self.channels[channel].add_template(process, template, efficiency)
 
     def add_data(self, **kwargs):
@@ -108,6 +108,16 @@ class MultiChannelTemplate:
     def channels(self):
         """dict: Channel dictionary."""
         return self._channel_dict
+
+    def set_yield(self, process_id, value):
+        if process_id not in self.processes:
+            raise RuntimeError(f"Process '{process}' not defined!")
+
+        for channel in self.channels.values():
+            try:
+                channel[process_id].yield_param = value*channel.efficiencies[process_id]
+            except KeyError:
+                continue
 
     def generate_per_channel_parameters(self, x):
         yields = x[:self.num_processes]
