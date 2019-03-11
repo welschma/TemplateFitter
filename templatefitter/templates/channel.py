@@ -162,7 +162,7 @@ class Channel:
         return fractions_per_template
 
     @lru_cache()
-    def _get_efficiency(self):
+    def _get_efficiencies_as_array(self):
         """Returns the efficiencies of the processes in this channel
         as `numpy.ndarray`.
         """
@@ -185,7 +185,7 @@ class Channel:
             Shape is (`num_bins`,).
         """
 
-        return (process_yields * self._get_efficiency()) @ self._fractions(nui_params)
+        return (process_yields * self._get_efficiencies_as_array()) @ self._fractions(nui_params)
 
     @lru_cache()
     def _create_block_diag_inv_corr_mat(self):

@@ -124,5 +124,5 @@ class TestChannel(unittest.TestCase):
         expected = np.full((self.num_templates,), self.efficiencies)
 
         np.testing.assert_array_equal(
-            self.channel._get_efficiency(), expected
+            self.channel._get_efficiencies_as_array(), expected
         )
