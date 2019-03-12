@@ -1,5 +1,7 @@
 import logging
 
+from multiprocessing import Pool
+
 import numpy as np
 import tqdm
 
@@ -151,7 +153,7 @@ class TemplateFitter:
 
         return hesse_approx
 
-    def profile(self, param_id, num_points=100, sigma=2.0, subtract_min=True):
+    def profile(self, param_id, num_cpu=4, num_points=100, sigma=2.0, subtract_min=True):
         """Performs a profile scan of the negative log likelihood
         function for the specified parameter.
 
@@ -198,21 +200,50 @@ class TemplateFitter:
 
         param_index = minimizer.params.param_id_to_index(param_id)
 
-        for point in tqdm.tqdm(profile_points, desc="Profile Progress"):
-            minimizer.release_params()
-            initial_values = self._nll.x0
-            initial_values[param_index] = point
-            minimizer.set_param_fixed(param_id)
-            result = minimizer.minimize(initial_values, get_hesse=False)
-            loop_result = minimizer.minimize(result.params.values, get_hesse=False)
+        args = [(minimizer, point, self._nll.x0, param_id) for point in
+                profile_points]
 
-            profile_values = np.append(profile_values, loop_result.fcn_min_val)
+        with Pool(num_cpu) as pool:
+            profile_values = np.array(
+                list(tqdm.tqdm(pool.imap(self._profile_helper, args),
+                               total=len(profile_points),
+                               desc="Profile Progess"))
+            )
+
+
+        # for point in tqdm.tqdm(profile_points, desc="Profile Progress"):
+        #     minimizer.release_params()
+        #     initial_values = self._nll.x0
+        #     initial_values[param_index] = point
+        #     minimizer.set_param_fixed(param_id)
+        #     result = minimizer.minimize(initial_values, get_hesse=False)
+        #     loop_result = minimizer.minimize(result.params.values, get_hesse=False)
+        #
+        #     profile_values = np.append(profile_values, loop_result.fcn_min_val)
 
         if subtract_min:
             profile_values -= minimum
             hesse_approx -= minimum
 
         return profile_points, profile_values, hesse_approx
+
+    @staticmethod
+    def _profile_helper(args):
+
+        minimizer = args[0]
+        point = args[1]
+        initial_values = args[2]
+        param_id = args[3]
+
+        minimizer.release_params()
+        param_index = minimizer.params.param_id_to_index(param_id)
+        initial_values[param_index] = point
+        minimizer.set_param_fixed(param_id)
+        result = minimizer.minimize(initial_values, get_hesse=False)
+        loop_result = minimizer.minimize(result.params.values, get_hesse=False)
+
+        return loop_result.fcn_min_val
+
 
     def get_significance(self, process_id, verbose=True):
         """Calculate significance for yield parameter of template
@@ -268,7 +299,7 @@ class TemplateFitter:
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
-        minimizer.set_param_fixed(tid + "_yield")
+        minimizer.set_param_fixed(process_id + "_yield")
         print("Background")
         profile_result = minimizer.minimize(self._nll.x0, verbose=verbose)
 
