@@ -56,6 +56,18 @@ class AbstractTemplate(ABC):
         return self._bins
 
     @property
+    def bin_mids(self):
+        return self._hist.bin_mids
+
+    @property
+    def bin_edges(self):
+        return self._hist.bin_edges
+
+    @property
+    def bin_widths(self):
+        return self._hist.bin_widths
+
+    @property
     def range(self):
         """"""
         return self._range
@@ -102,7 +114,6 @@ class AbstractTemplate(ABC):
 
     @nui_params.setter
     def nui_params(self, new_values):
-
         if new_values.shape != (self.num_bins,):
             raise RuntimeError(
                 "Shape of new nuissance parameters not compatible to this template."
