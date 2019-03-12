@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 
 import numpy as np
+from numba import jit
 
 from templatefitter.utility import cov2corr, get_systematic_cov_mat
 
@@ -167,12 +168,7 @@ class AbstractTemplate(ABC):
         numpy.ndarray
             Bin fractions of this template. Shape is (`num_bins`,).
         """
-        per_bin_yields = self._flat_bin_counts * (
-            1. + nui_params * self._relative_errors
-        )
-
-        with np.errstate(divide="ignore", invalid="ignore"):
-            return np.nan_to_num(per_bin_yields / np.sum(per_bin_yields))
+        return bin_fractions(nui_params, self._flat_bin_counts, self._relative_errors)
 
     def _add_cov_mat(self, hup, hdown):
         """Helper function. Calculates a covariance matrix from
@@ -230,6 +226,12 @@ class AbstractTemplate(ABC):
     @abstractmethod
     def add_variation(self, data, weights_up, weights_down):
         pass
+
+
+@jit(nopython=True)
+def bin_fractions(nui_params, bin_counts, rel_errors):
+    per_bin_yields = bin_counts * (1. + nui_params * rel_errors)
+    return per_bin_yields / np.sum(per_bin_yields)
 
 
 def template_compatible(temp1, temp2):

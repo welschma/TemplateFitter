@@ -6,6 +6,7 @@ from functools import lru_cache, reduce
 import numpy as np
 
 from scipy.linalg import block_diag
+from numba import jit
 
 from templatefitter.templates import template_compatible, hist_compatible
 from templatefitter.utility import xlogyx
@@ -195,8 +196,8 @@ class Channel:
         expected_num_evts_per_bin : numpy.ndarray
             Shape is (`num_bins`,).
         """
-
         return (process_yields * self._get_efficiencies_as_array()) @ self._fractions(nui_params)
+
 
     @lru_cache()
     def _create_block_diag_inv_corr_mat(self):
@@ -206,7 +207,7 @@ class Channel:
 
     def _gauss_term(self, nui_params):
         inv_corr_mat = self._create_block_diag_inv_corr_mat()
-        return 0.5 * (nui_params @ inv_corr_mat @ nui_params)
+        return gauss_helper(nui_params, inv_corr_mat)
 
     def nll_contribution(self, process_yields, nui_params):
         """Calculates the contribution to the binned negative log
@@ -224,10 +225,15 @@ class Channel:
         -------
         float
         """
-        data = self._hdata.bin_counts
+        data = self._hdata.bin_counts.flatten()
         exp_evts_per_bin = self._expected_evts_per_bin(process_yields, nui_params)
         poisson_term = np.sum(exp_evts_per_bin - data -
-                              xlogyx(data, exp_evts_per_bin))
+                                 xlogyx(data, exp_evts_per_bin))
         gauss_term = self._gauss_term(nui_params)
 
         return poisson_term + gauss_term
+
+
+@jit(nopython=True)
+def gauss_helper(nui_params, inv_corr_block):
+    return 0.5 * (nui_params @ inv_corr_block @ nui_params)
