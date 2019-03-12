@@ -80,6 +80,10 @@ class Channel:
     def efficiencies(self):
         return self._efficiency_dict
 
+    def reset(self):
+        for template in self.templates.values():
+            template.reset()
+
     def add_template(self, process, template, efficiency=1.):
         """Adds a template for a specified process to the template.
 

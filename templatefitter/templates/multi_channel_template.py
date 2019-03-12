@@ -119,6 +119,10 @@ class MultiChannelTemplate:
             except KeyError:
                 continue
 
+    def reset_parameters(self):
+        for channel in self.channels.values():
+            channel.reset()
+
     def generate_per_channel_parameters(self, x):
         yields = x[:self.num_processes]
         nui_params = x[self.num_processes: self.num_nui_params+self.num_processes]
