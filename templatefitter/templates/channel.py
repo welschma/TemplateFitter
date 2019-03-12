@@ -32,6 +32,7 @@ class Channel:
         self._bins = bins if isinstance(bins, tuple) else (bins,)
         self._range = range
         self._hdata = None
+        self._dim = None
 
     @property
     def num_templates(self):
@@ -142,9 +143,100 @@ class Channel:
             template.yield_param = new_yield*eff
             template.nui_params = new_nui_params
 
+    def plot_stacked_on(self, ax, **kwargs):
+
+        bin_mids = [template.bin_mids for template in self.templates.values()]
+        bin_edges = next(iter(self.templates.values())).bin_edges
+        bin_width = next(iter(self.templates.values())).bin_widths
+
+        colors = [template.color for template in self.templates.values()]
+        bin_counts = [template.values for template in self.templates.values()]
+        labels = [template.name for template in self.templates.values()]
+
+        if self._dim > 1:
+            bin_counts = [self._get_projection(kwargs["projection"], bc) for bc
+                          in bin_counts]
+            axis = kwargs["projection"]
+            ax_to_index = {
+                "x": 0,
+                "y": 1,
+            }
+            bin_mids = [mids[ax_to_index[axis]] for mids in bin_mids]
+            bin_edges = bin_edges[ax_to_index[axis]]
+            bin_width = bin_width[ax_to_index[axis]]
+
+        ax.hist(
+            bin_mids,
+            weights=bin_counts,
+            bins=bin_edges,
+            edgecolor="black",
+            histtype="stepfilled",
+            lw=0.5,
+            color=colors,
+            label=labels,
+            stacked=True
+        )
+
+        uncertainties_sq = [template.errors ** 2 for template in
+                            self._template_dict.values()]
+        if self._dim > 1:
+            uncertainties_sq = [
+                self._get_projection(kwargs["projection"], unc_sq) for unc_sq in uncertainties_sq
+            ]
+
+        total_uncertainty = np.sqrt(np.sum(np.array(uncertainties_sq), axis=0))
+        total_bin_count = np.sum(np.array(bin_counts), axis=0)
+
+        ax.bar(
+            x=bin_mids[0],
+            height=2 * total_uncertainty,
+            width=bin_width,
+            bottom=total_bin_count - total_uncertainty,
+            color="black",
+            hatch="///////",
+            fill=False,
+            lw=0,
+        )
+
+        data_bin_mids = self._hdata.bin_mids
+        data_bin_counts = self._hdata.bin_counts
+        data_bin_errors_sq = self._hdata.bin_errors_sq
+
+        if self.has_data:
+
+            if self._dim > 1:
+                data_bin_counts = self._get_projection(
+                    kwargs["projection"], data_bin_counts
+                )
+                data_bin_errors_sq = self._get_projection(
+                    kwargs["projection"], data_bin_errors_sq
+                )
+
+                axis = kwargs["projection"]
+                ax_to_index = {
+                    "x": 0,
+                    "y": 1,
+                }
+                data_bin_mids = data_bin_mids[ax_to_index[axis]]
+
+            ax.errorbar(x=data_bin_mids, y=data_bin_counts, yerr=np.sqrt(data_bin_errors_sq),
+                        ls="", marker=".", color="black")
+
+    @staticmethod
+    def _get_projection(ax, bc):
+        x_to_i = {
+            "x": 1,
+            "y": 0
+        }
+
+        return np.sum(bc, axis=x_to_i[ax])
+
     def _add_template(self, process, template, efficiency):
         if process in self.processes:
             raise RuntimeError(f"Process {name} already defined.")
+
+        if self._dim is None:
+            self._dim = len(template.bins)
 
         self._processes = (*self._processes, process)
         self._template_dict[process] = template
