@@ -140,10 +140,9 @@ class MultiChannelTemplate:
         per_ch_yields, per_ch_nui_params = self.generate_per_channel_parameters(new_values)
 
         for channel, ch_yields, ch_nui_params in zip(self.channels.values(), per_ch_yields, per_ch_nui_params):
-            channel.update_parameter(ch_yields, ch_nui_params)
+            channel.update_parameters(ch_yields, ch_nui_params)
 
     def create_nll(self):
-
         return NegLogLikelihood(self)
 
 
