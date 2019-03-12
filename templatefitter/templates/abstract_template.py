@@ -243,37 +243,3 @@ class AbstractTemplate(ABC):
 def bin_fractions(nui_params, bin_counts, rel_errors):
     per_bin_yields = bin_counts * (1. + nui_params * rel_errors)
     return per_bin_yields / np.sum(per_bin_yields)
-
-
-def template_compatible(temp1, temp2):
-    """Checks if two templates are compatible by comparing the
-    number of bins and the range of the templates.
-
-    Returns
-    -------
-    bool
-    """
-
-    num_bins_cond = (temp1.num_bins == temp2.num_bins)
-    shape_cond = (temp1.shape == temp2.shape)
-    range_cond = (temp1.range == temp2.range)
-
-    return num_bins_cond and range_cond and shape_cond
-
-
-def hist_compatible(temp, hist):
-    """Checks if a histogram and template are compatible by comparing
-    their number of bins, shape and range.
-
-    Returns
-    -------
-    bool
-    """
-    num_bins_cond = (temp.num_bins == hist.num_bins)
-    shape_cond = (temp.shape == hist.shape)
-    range_cond = (temp.range == hist.range)
-
-    return num_bins_cond and range_cond and shape_cond
-
-
-

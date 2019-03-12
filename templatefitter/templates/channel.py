@@ -8,7 +8,6 @@ import numpy as np
 from scipy.linalg import block_diag
 from numba import jit
 
-from templatefitter.templates import template_compatible, hist_compatible
 from templatefitter.utility import xlogyx
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
