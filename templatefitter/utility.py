@@ -76,7 +76,7 @@ def id_to_index(names, param_id):
     return param_index
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def xlogyx(x, y):
     """Compute :math:`x*log(y/x)`to a good precision when :math:`y~x`.
     The xlogyx function is taken from https://github.com/scikit-hep/probfit/blob/master/probfit/_libstat.pyx.
