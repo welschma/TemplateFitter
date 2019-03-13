@@ -23,8 +23,6 @@ class TemplateFitter:
 
     Parameters
     ----------
-    hdata : Implemented AbstractHist
-        Histogram filled with data events.
     templates : Implemented AbstractTemplate
         An instance of a template class that provides a negative
         log likelihood function via the `create_nll` method.
@@ -187,19 +185,11 @@ class TemplateFitter:
         )
         result = minimizer.minimize(self._nll.x0, get_hesse=True)
         minimum = result.fcn_min_val
-
         param_val, param_unc = minimizer.params[param_id]
-
         profile_points = np.linspace(
             param_val - sigma * param_unc, param_val + sigma * param_unc, num_points
         )
-
         hesse_approx = self._get_hesse_approx(param_id, result, profile_points)
-
-        profile_values = np.array([])
-
-        param_index = minimizer.params.param_id_to_index(param_id)
-
         args = [(minimizer, point, self._nll.x0, param_id) for point in
                 profile_points]
 
@@ -210,6 +200,8 @@ class TemplateFitter:
                                desc="Profile Progess"))
             )
 
+        # profile_values = np.array([])
+        # param_index = minimizer.params.param_id_to_index(param_id)
 
         # for point in tqdm.tqdm(profile_points, desc="Profile Progress"):
         #     minimizer.release_params()
@@ -234,7 +226,6 @@ class TemplateFitter:
         point = args[1]
         initial_values = args[2]
         param_id = args[3]
-
         minimizer.release_params()
         param_index = minimizer.params.param_id_to_index(param_id)
         initial_values[param_index] = point
@@ -244,7 +235,7 @@ class TemplateFitter:
 
         return loop_result.fcn_min_val
 
-
+    #TODO this is not yet generic, depens on param name in the likelihood
     def get_significance(self, process_id, verbose=True):
         """Calculate significance for yield parameter of template
         specified by `tid` using the profile likelihood ratio.
