@@ -244,8 +244,8 @@ class MultiChannelTemplate:
 
         Returns
         -------
-        toy_dataset : Instance of a histogram class that
-        inherits from `AbstractHist`.
+        toy_datasets : Dictionary of instances of a histogram class that
+        inherits from `AbstractHist` with keys equal to the channel names.
         """
         toy_datasets = {}
         for ch_name, channel in self.channels.items():
@@ -267,8 +267,8 @@ class MultiChannelTemplate:
 
         Returns
         -------
-        asimov_dataset : Instance of a histogram class that
-        inherits from `AbstractHist`.
+        asimov_datasets : Dictionary of instances of a histogram class that
+        inherits from `AbstractHist` with keys equal to the channel names.
         """
         asimov_datasets = {}
         for ch_name, channel in self.channels.items():

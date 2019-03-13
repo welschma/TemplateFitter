@@ -10,7 +10,6 @@ from templatefitter.minimizer import *
 
 __all__ = [
     "TemplateFitter",
-    # "ToyStudy"
 ]
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -37,7 +36,6 @@ class TemplateFitter:
         self._nll = templates.create_nll()
         self._fit_result = None
         self._minimizer_id = minimizer_id
-
         self._fixed_parameters = list()
         self._bound_parameters = dict()
 
@@ -65,7 +63,7 @@ class TemplateFitter:
         Returns
         -------
         MinimizeResult : namedtuple
-            A namedtuple with the most important informations about the
+            A namedtuple with the most important information about the
             minimization.
         """
         minimizer = minimizer_factory(
@@ -116,7 +114,7 @@ class TemplateFitter:
         ----------
         param_id : str or int
             Parameter identifier.
-        boudns : tuple of float
+        bounds : tuple of float
             Lower and upper boundaries for this parameter.
         """
 
@@ -226,6 +224,20 @@ class TemplateFitter:
 
     @staticmethod
     def _profile_helper(args):
+        """Helper function for the calculation fo the profile nll.
+
+        Parameters
+        ----------
+        args: tuple
+            1st element: Minimizer object, 2nd element: parameter point,
+            3rd element: Initial parameter values, 4th element: parameter
+            identifier.
+
+        Returns
+        -------
+        fcn_min_val : float
+            Minimum function value.
+        """
 
         minimizer = args[0]
         point = args[1]
