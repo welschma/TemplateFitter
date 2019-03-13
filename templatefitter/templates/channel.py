@@ -6,6 +6,7 @@ from functools import lru_cache, reduce
 import numpy as np
 
 from scipy.linalg import block_diag
+from scipy.stats import poisson
 from numba import jit
 
 from templatefitter.utility import xlogyx
@@ -32,6 +33,8 @@ class Channel:
         self._range = range
         self._hdata = None
         self._dim = None
+        self._template_type = None
+        self._htype = None
 
     @property
     def num_templates(self):
@@ -47,6 +50,10 @@ class Channel:
     def num_bins(self):
         """int: Number of bins per template."""
         return reduce(lambda x, y: x*y, self.bins)
+
+    @property
+    def bin_edges(self):
+        return list(self.templates.values())[0].bin_edges
 
     @property
     def range(self):
@@ -102,16 +109,6 @@ class Channel:
             self._add_template(process, template, efficiency)
         else:
             raise RuntimeError("Trying to add a non compatible template with the Channel.")
-
-    def _check_template(self, template):
-        bins_cond = self._bins == template.bins
-        range_cond = self._range == template.range
-        return bins_cond and range_cond
-
-    def _check_hist(self, hist):
-        bins_cond = self._bins == hist.shape
-        range_cond = self._range == hist.range
-        return bins_cond and range_cond
 
     def add_data(self, hdata):
         """Adds a binned dataset to this channel.
@@ -221,6 +218,49 @@ class Channel:
             ax.errorbar(x=data_bin_mids, y=data_bin_counts, yerr=np.sqrt(data_bin_errors_sq),
                         ls="", marker=".", color="black")
 
+    def nll_contribution(self, process_yields, nui_params):
+        """Calculates the contribution to the binned negative log
+        likelihood function of this channel.
+
+        Parameters
+        ----------
+        process_yields: numpy.ndarray
+            An array holding the yield values for the processes in
+            this channel. The order has to match order of the
+            templates that have been added to the template. Shape is
+            (`num_processes`).
+
+        Returns
+        -------
+        float
+        """
+        data = self._hdata.bin_counts.flatten()
+        exp_evts_per_bin = self._expected_evts_per_bin(process_yields, nui_params)
+        poisson_term = np.sum(exp_evts_per_bin - data -
+                                 xlogyx(data, exp_evts_per_bin))
+        gauss_term = self._gauss_term(nui_params)
+
+        return poisson_term + gauss_term
+
+    def generate_toy_dataset(self):
+        template_bin_counts = sum([template.values for template in self.templates.values()])
+        toy_bin_counts = poisson.rvs(template_bin_counts)
+
+        return self._htype.from_binned_data(
+            toy_bin_counts, self.bin_edges, np.sqrt(toy_bin_counts)
+        )
+
+    def generate_asimov_dataset(self, integer_values=False):
+        template_bin_counts = sum([template.values for template in self.templates.values()])
+        if integer_values:
+            asimov_bin_counts = np.rint(template_bin_counts)
+        else:
+            asimov_bin_counts = template_bin_counts
+
+        return self._htype.from_binned_data(
+            asimov_bin_counts, self.bin_edges, np.sqrt(asimov_bin_counts)
+        )
+
     @staticmethod
     def _get_projection(ax, bc):
         x_to_i = {
@@ -236,6 +276,15 @@ class Channel:
 
         if self._dim is None:
             self._dim = len(template.bins)
+
+        if self._template_type is None:
+            self._template_type = type(template)
+            self._htype = type(template._hist)
+
+        if type(template) != self._template_type:
+            raise RuntimeError(f"Given template type of {type(template)} "
+                               f"does not match the template types in this "
+                               f"channel ({self._template_type}.")
 
         self._processes = (*self._processes, process)
         self._template_dict[process] = template
@@ -293,7 +342,6 @@ class Channel:
         """
         return (process_yields * self._get_efficiencies_as_array()) @ self._fractions(nui_params)
 
-
     @lru_cache()
     def _create_block_diag_inv_corr_mat(self):
         inv_corr_mats = [template.inv_corr_mat for template
@@ -301,34 +349,15 @@ class Channel:
         return block_diag(*inv_corr_mats)
 
     def _gauss_term(self, nui_params):
-        inv_corr_mat = self._create_block_diag_inv_corr_mat()
-        return gauss_helper(nui_params, inv_corr_mat)
+        inv_corr_block = self._create_block_diag_inv_corr_mat()
+        return 0.5 * (nui_params @ inv_corr_block @ nui_params)
 
-    def nll_contribution(self, process_yields, nui_params):
-        """Calculates the contribution to the binned negative log
-        likelihood function of this channel.
+    def _check_template(self, template):
+        bins_cond = self._bins == template.bins
+        range_cond = self._range == template.range
+        return bins_cond and range_cond
 
-        Parameters
-        ----------
-        process_yields: numpy.ndarray
-            An array holding the yield values for the processes in
-            this channel. The order has to match order of the
-            templates that have been added to the template. Shape is
-            (`num_processes`).
-
-        Returns
-        -------
-        float
-        """
-        data = self._hdata.bin_counts.flatten()
-        exp_evts_per_bin = self._expected_evts_per_bin(process_yields, nui_params)
-        poisson_term = np.sum(exp_evts_per_bin - data -
-                                 xlogyx(data, exp_evts_per_bin))
-        gauss_term = self._gauss_term(nui_params)
-
-        return poisson_term + gauss_term
-
-
-@jit(nopython=True)
-def gauss_helper(nui_params, inv_corr_block):
-    return 0.5 * (nui_params @ inv_corr_block @ nui_params)
+    def _check_hist(self, hist):
+        bins_cond = self._bins == hist.shape
+        range_cond = self._range == hist.range
+        return bins_cond and range_cond

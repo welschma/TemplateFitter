@@ -57,6 +57,20 @@ class TestChannel(unittest.TestCase):
                 process, template, efficiency=self.efficiencies
             )
 
+    def test_asimov_data_set(self):
+        hasimov = self.channel.generate_asimov_dataset()
+        hiris = Hist1d(self.bins, range=self.range, data=iris_data)
+        np.testing.assert_array_equal(hasimov.bin_counts, hiris.bin_counts)
+        np.testing.assert_array_equal(hasimov.bin_edges, hiris.bin_edges)
+        np.testing.assert_array_equal(hasimov.bin_errors, hiris.bin_errors)
+
+    def test_toy_data_set(self):
+        htoy = self.channel.generate_toy_dataset()
+        hiris = Hist1d(self.bins, range=self.range, data=iris_data)
+        self.assertEqual(htoy.bin_counts.shape, hiris.bin_counts.shape)
+        self.assertEqual(htoy.bin_edges.shape, hiris.bin_edges.shape)
+        self.assertEqual(htoy.bin_errors.shape, hiris.bin_errors.shape)
+
     def test_update_parameters(self):
 
         new_yields = np.array([35, 60, 80])

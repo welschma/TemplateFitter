@@ -20,7 +20,6 @@ __all__ = [
 class MultiChannelTemplate:
 
     def __init__(self):
-
         self._channel_dict = OrderedDict()
         self._processes = tuple()
 
@@ -35,13 +34,35 @@ class MultiChannelTemplate:
         self._channel_dict[name] = ch
 
     def define_process(self, name):
-        """Defines a process"""
+        """
+
+        Parameters
+        ----------
+        name
+
+        Returns
+        -------
+
+        """
         if name not in self._processes:
             self._processes = (*self._processes, name)
         else:
             raise RuntimeError(f"Process {name} already defined.")
 
     def add_template(self, channel, process, template, efficiency=1.0):
+        """
+
+        Parameters
+        ----------
+        channel
+        process
+        template
+        efficiency
+
+        Returns
+        -------
+
+        """
         if channel not in list(self.channels.keys()):
             raise RuntimeError(f"Channel '{channel}' not defined!")
         if process not in self.processes:
@@ -50,7 +71,16 @@ class MultiChannelTemplate:
         self.channels[channel].add_template(process, template, efficiency)
 
     def add_data(self, **kwargs):
+        """
 
+        Parameters
+        ----------
+        kwargs
+
+        Returns
+        -------
+
+        """
         for channel, hdata in kwargs.items():
             if channel not in list(self.channels.keys()):
                 raise RuntimeError(f"Channel '{channel}' not defined!")
@@ -110,6 +140,17 @@ class MultiChannelTemplate:
         return self._channel_dict
 
     def set_yield(self, process_id, value):
+        """
+
+        Parameters
+        ----------
+        process_id
+        value
+
+        Returns
+        -------
+
+        """
         if process_id not in self.processes:
             raise RuntimeError(f"Process '{process}' not defined!")
 
@@ -120,10 +161,26 @@ class MultiChannelTemplate:
                 continue
 
     def reset_parameters(self):
+        """
+
+        Returns
+        -------
+
+        """
         for channel in self.channels.values():
             channel.reset()
 
     def generate_per_channel_parameters(self, x):
+        """
+
+        Parameters
+        ----------
+        x
+
+        Returns
+        -------
+
+        """
         yields = x[:self.num_processes]
         nui_params = x[self.num_processes: self.num_nui_params+self.num_processes]
 
@@ -131,11 +188,22 @@ class MultiChannelTemplate:
                               for channel in self.channels.values()]
 
         per_channel_num_nui_params = [channel.num_nui_params for channel in self.channels.values()]
-        per_channel_nui_params = list(array_split_into(nui_params, per_channel_num_nui_params))
+        per_channel_nui_params = np.split(nui_params, np.cumsum(per_channel_num_nui_params)[:-1])
+        # per_channel_nui_params = list(array_split_into(nui_params, per_channel_num_nui_params))
 
         return per_channel_yields, per_channel_nui_params
 
     def update_parameters(self, new_values):
+        """
+
+        Parameters
+        ----------
+        new_values
+
+        Returns
+        -------
+
+        """
 
         per_ch_yields, per_ch_nui_params = self.generate_per_channel_parameters(new_values)
 
@@ -143,7 +211,52 @@ class MultiChannelTemplate:
             channel.update_parameters(ch_yields, ch_nui_params)
 
     def create_nll(self):
+        """
+
+        Returns
+        -------
+
+        """
         return NegLogLikelihood(self)
+
+    def generate_toy_dataset(self):
+        """Generates a toy dataset from the given templates.
+        This is a binned dataset where each bin is treated a
+        random number following a poisson distribution with
+        mean equal to the bin content of all templates.
+
+        Returns
+        -------
+        toy_dataset : Instance of a histogram class that
+        inherits from `AbstractHist`.
+        """
+        toy_datasets = {}
+        for ch_name, channel in self.channels.items():
+            toy_datasets[ch_name] = channel.generate_toy_dataset()
+        return toy_datasets
+
+    def generate_asimov_dataset(self, integer_values=False):
+        """Generates an Asimov dataset from the given templates.
+        This is a binned dataset which corresponds to the current
+        expectation values. Since data takes only integer values,
+        the template expectation in each bin is rounded to the
+        nearest integer.
+
+        Parameters
+        ----------
+        integer_values : bool, optional
+            Whether to round Asimov data points to integer values
+            or not. Default is False.
+
+        Returns
+        -------
+        asimov_dataset : Instance of a histogram class that
+        inherits from `AbstractHist`.
+        """
+        asimov_datasets = {}
+        for ch_name, channel in self.channels.items():
+            asimov_datasets[ch_name] = channel.generate_asimov_dataset(integer_values)
+        return asimov_datasets
 
 
 class AbstractTemplateCostFunction(ABC):
@@ -182,10 +295,6 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
 
     @property
     def x0(self):
-        """
-
-        :return:
-        """
         yields = self._mct.process_yields
         nui_params = self._mct.nui_params
 
@@ -208,9 +317,7 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
         return yield_names + nui_param_names
 
     def __call__(self, x):
-
         ch_yields, ch_nui_params = self._mct.generate_per_channel_parameters(x)
-
         nll_value = 0
 
         for channel, yields, nui_params in zip(self._mct.channels.values(), ch_yields, ch_nui_params):
