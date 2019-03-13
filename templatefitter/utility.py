@@ -1,7 +1,7 @@
 from itertools import islice
 
 import numpy as np
-from numba import jit
+from numba import jit, vectorize, float64, float32
 
 
 __all__ = ["cov2corr", "corr2cov", "xlogyx", "get_systematic_cov_mat",
@@ -76,24 +76,29 @@ def id_to_index(names, param_id):
     return param_index
 
 
-@jit(nopython=True, cache=True)
+# @jit(nopython=True, cache=True)
+@vectorize([float32(float32, float32),
+            float64(float64, float64)])
 def xlogyx(x, y):
     """Compute :math:`x*log(y/x)`to a good precision when :math:`y~x`.
     The xlogyx function is taken from https://github.com/scikit-hep/probfit/blob/master/probfit/_libstat.pyx.
     """
     # result = np.where(x < y, x * np.log1p((y - x) / x), -x * np.log1p((x - y) / y))
-
-    result = np.zeros_like(x)
-
-    for i in range(x.shape[0]):
-        if x[i] < 1e-100:
-            result[i] = 0
-        elif x[i] < y[i]:
-            result[i] = x[i] * np.log1p((y[i] - x[i])/x[i])
-        else:
-            result[i] = -x[i] * np.log1p((x[i] - y[i])/y[i])
-
-    return result
+    if x < 1e-100:
+        return 0.
+    elif x<y:
+        return x*np.log1p((y-x)/x)
+    else:
+        return -x*np.log1p((x-y)/y)
+    # result = np.zeros_like(x)
+    #
+    # for i in range(x.shape[0]):
+    #     if x[i] < 1e-100:
+    #         result[i] = 0
+    #     elif x[i] < y[i]:
+    #         result[i] = x[i] * np.log1p((y[i] - x[i])/x[i])
+    #     else:
+    #         result[i] = -x[i] * np.log1p((x[i] - y[i])/y[i])
 
 
 def get_systematic_cov_mat(hnom, hup, hdown):
