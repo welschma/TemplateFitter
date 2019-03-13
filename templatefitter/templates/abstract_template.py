@@ -9,7 +9,7 @@ from templatefitter.utility import cov2corr, get_systematic_cov_mat
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-__all__ = ["AbstractTemplate", "template_compatible", "hist_compatible"]
+__all__ = ["AbstractTemplate",]
 
 
 class AbstractTemplate(ABC):
