@@ -160,6 +160,23 @@ class MultiChannelTemplate:
             except KeyError:
                 continue
 
+    def get_yield(self, process_id):
+        """
+
+        Parameters
+        ----------
+        process_id
+        value
+
+        Returns
+        -------
+
+        """
+        if process_id not in self.processes:
+            raise RuntimeError(f"Process '{process_id}' not defined!")
+
+        return self.process_yields[self.process_to_index(process_id)]
+
     def reset_parameters(self):
         """
 
