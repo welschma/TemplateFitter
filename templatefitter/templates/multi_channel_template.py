@@ -23,6 +23,54 @@ class MultiChannelTemplate:
         self._channel_dict = OrderedDict()
         self._processes = tuple()
 
+    @property
+    def num_nui_params(self):
+        """int: Total number of nuissance parameters. """
+        return sum([channel.num_nui_params for channel in self.channels.values()])
+
+    @property
+    def process_yields(self):
+        yields = np.zeros(self.num_processes)
+
+        for process in self.processes:
+            for channel in self.channels.values():
+                try:
+                    yields[self.process_to_index(process)] += channel[process].yield_param
+                except KeyError:
+                    continue
+
+        return yields
+
+    @property
+    def nui_params(self):
+        nui_params_per_channel = list()
+
+        for channel in self.channels.values():
+            for template in channel.templates.values():
+                nui_params_per_channel.append(template.nui_params)
+
+        return np.concatenate(nui_params_per_channel)
+
+    @property
+    def num_channels(self):
+        """int: Number of defined channels."""
+        return len(self._channel_dict)
+
+    @property
+    def channels(self):
+        """dict: Channel dictionary."""
+        return self._channel_dict
+
+    @property
+    def num_processes(self):
+        """int: Number of defined processes."""
+        return len(self._processes)
+
+    @property
+    def processes(self):
+        """tuple of str: Names of defined processes."""
+        return self._processes
+
     def define_channel(self, name, bins, range):
         """Creates and stores `Channel` instances in the internal
         channel map.
@@ -87,57 +135,9 @@ class MultiChannelTemplate:
 
             self.channels[channel].add_data(hdata)
 
-    @property
-    def processes(self):
-        """tuple of str: Names of defined processes."""
-        return self._processes
-
     def process_to_index(self, process):
         """int: Index of the process in the internal tuple."""
         return self._processes.index(process)
-
-    @property
-    def num_processes(self):
-        """int: Number of defined processes."""
-        return len(self._processes)
-
-    @property
-    def num_nui_params(self):
-        """int: Total number of nuissance parameters. """
-        return sum([channel.num_nui_params for channel in self.channels.values()])
-
-    @property
-    def process_yields(self):
-        yields = np.zeros(self.num_processes)
-
-        for process in self.processes:
-            for channel in self.channels.values():
-                try:
-                    yields[self.process_to_index(process)] += channel[process].yield_param
-                except KeyError:
-                    continue
-
-        return yields
-
-    @property
-    def nui_params(self):
-        nui_params_per_channel = list()
-
-        for channel in self.channels.values():
-            for template in channel.templates.values():
-                nui_params_per_channel.append(template.nui_params)
-
-        return np.concatenate(nui_params_per_channel)
-
-    @property
-    def num_channels(self):
-        """int: Number of defined channels."""
-        return len(self._channel_dict)
-
-    @property
-    def channels(self):
-        """dict: Channel dictionary."""
-        return self._channel_dict
 
     def set_yield(self, process_id, value):
         """

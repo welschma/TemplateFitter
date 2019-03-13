@@ -237,7 +237,7 @@ class Channel:
         data = self._hdata.bin_counts.flatten()
         exp_evts_per_bin = self._expected_evts_per_bin(process_yields, nui_params)
         poisson_term = np.sum(exp_evts_per_bin - data -
-                                 xlogyx(data, exp_evts_per_bin))
+                              xlogyx(data, exp_evts_per_bin))
         gauss_term = self._gauss_term(nui_params)
 
         return poisson_term + gauss_term
