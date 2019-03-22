@@ -192,7 +192,11 @@ class Channel:
             hatch="///////",
             fill=False,
             lw=0,
+            label="MC Uncertainty"
         )
+
+        if self._hdata is None:
+            return ax
 
         data_bin_mids = self._hdata.bin_mids
         data_bin_counts = self._hdata.bin_counts
@@ -216,7 +220,7 @@ class Channel:
                 data_bin_mids = data_bin_mids[ax_to_index[axis]]
 
             ax.errorbar(x=data_bin_mids, y=data_bin_counts, yerr=np.sqrt(data_bin_errors_sq),
-                        ls="", marker=".", color="black")
+                        ls="", marker=".", color="black", label="Data")
 
     def nll_contribution(self, process_yields, nui_params):
         """Calculates the contribution to the binned negative log

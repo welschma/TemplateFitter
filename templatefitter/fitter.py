@@ -14,6 +14,7 @@ __all__ = [
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+# TODO work on fixing parameters and stuff
 
 class TemplateFitter:
     """This class performs the parameter estimation and calculation
@@ -38,6 +39,9 @@ class TemplateFitter:
         self._minimizer_id = minimizer_id
         self._fixed_parameters = list()
         self._bound_parameters = dict()
+
+    def fix_nui_params(self):
+        pass
 
     def do_fit(self, update_templates=True, get_hesse=True, verbose=True, fix_nui_params=False):
         """Performs maximum likelihood fit by minimizing the
@@ -81,8 +85,6 @@ class TemplateFitter:
 
         for param_id, bounds in self._bound_parameters.items():
             minimizer.set_param_bounds(param_id, bounds)
-
-        logging.debug(self._nll.x0)
 
         # fit_result = minimizer.minimize(
         #     self._nll.x0, get_hesse=False, verbose=False
@@ -154,7 +156,7 @@ class TemplateFitter:
 
         return hesse_approx
 
-    def profile(self, param_id, num_cpu=4, num_points=100, sigma=2.0, subtract_min=True):
+    def profile(self, param_id, num_cpu=4, num_points=100, sigma=2.0, subtract_min=True, fix_nui_params=False):
         """Performs a profile scan of the negative log likelihood
         function for the specified parameter.
 
@@ -186,35 +188,30 @@ class TemplateFitter:
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
-        result = minimizer.minimize(self._nll.x0, get_hesse=True)
+
+        if fix_nui_params:
+            for i in range(self._templates.num_processes,
+                           self._templates.num_nui_params +
+                           self._templates.num_processes):
+                minimizer.set_param_fixed(i)
+        print("Start nominal minimization")
+        result = minimizer.minimize(self._nll.x0, get_hesse=True, verbose=True)
         minimum = result.fcn_min_val
         param_val, param_unc = minimizer.params[param_id]
         profile_points = np.linspace(
             param_val - sigma * param_unc, param_val + sigma * param_unc, num_points
         )
         hesse_approx = self._get_hesse_approx(param_id, result, profile_points)
-        args = [(minimizer, point, self._nll.x0, param_id) for point in
-                profile_points]
 
+        print(f"Start profiling the likelihood using {num_cpu} processes...")
+        args = [(minimizer, point, result.params.values, param_id) for point in
+                profile_points]
         with Pool(num_cpu) as pool:
             profile_values = np.array(
                 list(tqdm.tqdm(pool.imap(self._profile_helper, args),
                                total=len(profile_points),
                                desc="Profile Progess"))
             )
-
-        # profile_values = np.array([])
-        # param_index = minimizer.params.param_id_to_index(param_id)
-
-        # for point in tqdm.tqdm(profile_points, desc="Profile Progress"):
-        #     minimizer.release_params()
-        #     initial_values = self._nll.x0
-        #     initial_values[param_index] = point
-        #     minimizer.set_param_fixed(param_id)
-        #     result = minimizer.minimize(initial_values, get_hesse=False)
-        #     loop_result = minimizer.minimize(result.params.values, get_hesse=False)
-        #
-        #     profile_values = np.append(profile_values, loop_result.fcn_min_val)
 
         if subtract_min:
             profile_values -= minimum
@@ -248,13 +245,19 @@ class TemplateFitter:
         param_index = minimizer.params.param_id_to_index(param_id)
         initial_values[param_index] = point
         minimizer.set_param_fixed(param_id)
-        result = minimizer.minimize(initial_values, get_hesse=False)
-        loop_result = minimizer.minimize(result.params.values, get_hesse=False)
+
+        try:
+            loop_result = minimizer.minimize(initial_values, get_hesse=False)
+        except RuntimeError as e:
+            logging.info(e)
+            logging.info(f"Minimization with point {point} was not "
+                         f"sucessfull, trying again.")
+            return np.nan
 
         return loop_result.fcn_min_val
 
     #TODO this is not yet generic, depens on param name in the likelihood
-    def get_significance(self, process_id, verbose=True):
+    def get_significance(self, process_id, verbose=True, fix_nui_params=False):
         """Calculate significance for yield parameter of template
         specified by `tid` using the profile likelihood ratio.
 
@@ -294,7 +297,18 @@ class TemplateFitter:
             self._minimizer_id, self._nll, self._nll.param_names
         )
 
+        if fix_nui_params:
+            for i in range(self._templates.num_processes,
+                           self._templates.num_nui_params +
+                           self._templates.num_processes):
+                minimizer.set_param_fixed(i)
+
         print("Perform nominal minimization:")
+        for param_id in self._fixed_parameters:
+            minimizer.set_param_fixed(param_id)
+
+        for param_id, bounds in self._bound_parameters.items():
+            minimizer.set_param_bounds(param_id, bounds)
         fit_result = minimizer.minimize(self._nll.x0, verbose=verbose)
 
         if fit_result.params[f"{process_id}_yield"][0] < 0:
@@ -306,6 +320,18 @@ class TemplateFitter:
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
+
+        if fix_nui_params:
+            for i in range(self._templates.num_processes,
+                           self._templates.num_nui_params +
+                           self._templates.num_processes):
+                minimizer.set_param_fixed(i)
+        for param_id in self._fixed_parameters:
+            minimizer.set_param_fixed(param_id)
+
+        for param_id, bounds in self._bound_parameters.items():
+            minimizer.set_param_bounds(param_id, bounds)
+
         minimizer.set_param_fixed(process_id + "_yield")
         print("Background")
         profile_result = minimizer.minimize(self._nll.x0, verbose=verbose)

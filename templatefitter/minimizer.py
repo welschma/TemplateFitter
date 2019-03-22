@@ -283,7 +283,7 @@ class IMinuitMinimizer(AbstractMinimizer):
         m = Minuit.from_array_func(
             self._fcn,
             initial_params,
-            error=0.1 * initial_params,
+            error=0.05 * initial_params,
             errordef=errordef,
             fix=self._fixed_params,
             name=self.params.names,
@@ -291,7 +291,9 @@ class IMinuitMinimizer(AbstractMinimizer):
             print_level=1 if verbose else 0,
         )
 
-        fmin, _ = m.migrad()
+        # perform minimization twice!
+        fmin, _ = m.migrad(ncall=20000)
+        fmin, _ = m.migrad(ncall=20000)
 
         self._fcn_min_val = m.fval
         self._params.values = m.np_values()
@@ -303,8 +305,8 @@ class IMinuitMinimizer(AbstractMinimizer):
             fmin["is_valid"] and fmin["has_valid_parameters"] and fmin["has_covariance"]
         )
 
-        if not self._success:
-            raise RuntimeError(f"Minimization was not successful.\n" f"{fmin}\n")
+        # if not self._success:
+        #     raise RuntimeError(f"Minimization was not successful.\n" f"{fmin}\n")
 
         return MinimizeResult(m.fval, self._params, self._success)
 

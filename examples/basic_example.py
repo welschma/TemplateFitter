@@ -12,6 +12,8 @@ import templatefitter as tf
 
 
 # In[3]:
+import matplotlib
+matplotlib.use('Agg')
 
 ceph = "/ceph/welsch/moritz_data/"
 
