@@ -14,14 +14,14 @@ import pandas as pd
 import scipy.stats
 import matplotlib.pyplot
 
-from templatefitter.histogram import Hist1d
+from templatefitter.histogram_legacy import Hist1d
 from templatefitter.utility import cov2corr
 from templatefitter.nll import StackedTemplateNegLogLikelihood
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
-    "AbstractTemplate", "Template", "StackedTemplate", "SimultaneousTemplate"
+    "AbstractTemplate", "Template", "StackedTemplate"
 ]
 
 
@@ -492,7 +492,7 @@ class StackedTemplate(AbstractTemplate):
 
         Parameters
         ----------
-        nuiss_params : numpy.ndarray
+        nuiss_params:  numpy.ndarray
             Array of nuissance parameter values needed for the evaluation
             of the AdvancedTemplateModel `bin_fraction` method.
 
@@ -735,5 +735,4 @@ class StackedTemplate(AbstractTemplate):
         return self._template_dict[tid]
 
 
-class SimultaneousTemplate(AbstractTemplate):
-    pass
+
