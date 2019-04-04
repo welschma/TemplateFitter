@@ -3,11 +3,13 @@ from functools import reduce
 
 import numpy as np
 import pandas as pd
+import pathlib
 
 from templatefitter.histograms import Hist1d, Hist2d
 from templatefitter.templates import MultiChannelTemplate, Channel, Template1d, Template2d, NegLogLikelihood
 
-iris = pd.read_csv("./iris.csv", sep=",", header=0)
+this_dir = pathlib.Path(__file__).resolve().parent
+iris = pd.read_csv(this_dir / "iris.csv", sep=",", header=0)
 
 setosa = iris.query("class_id==1")["sepal_length"].values
 versicolor = iris.query("(class_id==2)")["sepal_length"].values
@@ -230,10 +232,4 @@ class TestMultiChannelTemplate2d(unittest.TestCase):
     def test_create_nll(self):
         nll = self.mct.create_nll()
         self.assertTrue(isinstance(nll, NegLogLikelihood))
-
-
-
-
-
-
 
