@@ -23,6 +23,11 @@ class MultiChannelTemplate:
         self._channel_dict = OrderedDict()
         self._processes = tuple()
 
+        self._rate_uncertainties = dict()
+        self._num_rate_uncertainties = 0
+        self._rate_uncertainties_nui_params = dict()
+        self._per_process_num_rate_unc = dict()
+
     @property
     def num_nui_params(self):
         """int: Total number of nuissance parameters. """
@@ -50,6 +55,40 @@ class MultiChannelTemplate:
                 nui_params_per_channel.append(template.nui_params)
 
         return np.concatenate(nui_params_per_channel)
+
+    @property
+    def rate_uncertainties_dict(self):
+        return self._rate_uncertainties
+
+    @property
+    def rate_uncertainties(self):
+        rate_uncertainties_per_process = list()
+        for process, uncertainties in self._rate_uncertainties.items():
+            rate_uncertainties_per_process.append(uncertainties)
+        return np.concatenate(rate_uncertainties_per_process)
+
+    @property
+    def rate_uncertainties_nui_params(self):
+        rate_nui_params_per_process = list()
+        for process, uncertainties in self._rate_uncertainties_nui_params.items():
+            rate_nui_params_per_process.append(uncertainties)
+        return np.concatenate(rate_nui_params_per_process)
+
+    @rate_uncertainties_nui_params.setter
+    def rate_uncertainties_nui_params(self, new_values):
+        new_values_per_process =  np.split(
+            new_values, np.cumsum(self.num_rate_uncertainties_per_process)[1:]
+        )
+        for process, values in zip(self._rate_uncertainties_nui_params.keys(), new_values_per_process):
+            self._rate_uncertainties_nui_params[process] = values
+
+    @property
+    def num_rate_uncertainties(self):
+        return self._num_rate_uncertainties
+
+    @property
+    def num_rate_uncertainties_per_process(self):
+        return np.array(list(self._per_process_num_rate_unc.values()))
 
     @property
     def num_channels(self):
@@ -94,8 +133,24 @@ class MultiChannelTemplate:
         """
         if name not in self._processes:
             self._processes = (*self._processes, name)
+            self._rate_uncertainties[name] = np.array([])
+            self._rate_uncertainties_nui_params[name] = np.array([])
+            self._per_process_num_rate_unc[name] = 0
         else:
             raise RuntimeError(f"Process {name} already defined.")
+
+    def add_rate_uncertainty(self, process, rel_uncertainty):
+        if process not in self._processes:
+            raise RuntimeError(f"Process {process} not defined.")
+        else:
+            self._rate_uncertainties[process] = np.array(
+                [*self._rate_uncertainties[process], rel_uncertainty]
+            )
+            self._rate_uncertainties_nui_params[process] = np.array(
+                [*self._rate_uncertainties_nui_params[process], 0]
+            )
+            self._num_rate_uncertainties += 1
+            self._per_process_num_rate_unc[process] += 1
 
     def add_template(self, channel, process, template, efficiency=1.0):
         """
@@ -187,6 +242,11 @@ class MultiChannelTemplate:
         for channel in self.channels.values():
             channel.reset()
 
+    def multiplicative_rate_uncertainty(self, nui_params):
+        epsilon = 1 + nui_params*self.rate_uncertainties
+        per_yield_epsilon = np.split(epsilon, np.cumsum(self.num_rate_uncertainties_per_process)[1:])
+        return np.array([np.prod(eps) for eps in per_yield_epsilon])
+
     def generate_per_channel_parameters(self, x):
         """
 
@@ -200,7 +260,10 @@ class MultiChannelTemplate:
         """
         yields = x[:self.num_processes]
         nui_params = x[self.num_processes: self.num_nui_params+self.num_processes]
-
+        per_yield_rate_unc = self.multiplicative_rate_uncertainty(
+            x[self.num_processes+self.num_nui_params:self.num_processes+self.num_nui_params+self.num_rate_uncertainties]
+        )
+        yields *= per_yield_rate_unc
         per_channel_yields = [yields[channel.process_indices(self.processes)]
                               for channel in self.channels.values()]
 
@@ -221,7 +284,7 @@ class MultiChannelTemplate:
         -------
 
         """
-
+        self.rate_uncertainties_nui_params = new_values[-self.num_rate_uncertainties:]
         per_ch_yields, per_ch_nui_params = self.generate_per_channel_parameters(new_values)
 
         for channel, ch_yields, ch_nui_params in zip(self.channels.values(), per_ch_yields, per_ch_nui_params):
@@ -314,8 +377,9 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
     def x0(self):
         yields = self._mct.process_yields
         nui_params = self._mct.nui_params
+        rate_uncertainties = self._mct.rate_uncertainties_nui_params
 
-        return np.concatenate((yields, nui_params))
+        return np.concatenate((yields, nui_params, rate_uncertainties))
 
     @property
     def param_names(self):
@@ -331,7 +395,14 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
                 ])
             nui_param_names.extend(per_channel_names)
 
-        return yield_names + nui_param_names
+        rate_uncertainties_names = []
+
+        for process, uncertainties in self._mct.rate_uncertainties_dict.items():
+            rate_uncertainties_names.extend(
+                [f"rate_{process}_{i}" for i in range(len(uncertainties))]
+            )
+
+        return yield_names + nui_param_names + rate_uncertainties_names
 
     def __call__(self, x):
         ch_yields, ch_nui_params = self._mct.generate_per_channel_parameters(x)
@@ -340,6 +411,12 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
         for channel, yields, nui_params in zip(self._mct.channels.values(), ch_yields, ch_nui_params):
 
             nll_value += channel.nll_contribution(yields, nui_params)
+
+        # constrain rate uncertainties
+
+        nll_value += 0.5 * np.sum(
+            x[self._mct.num_processes+self._mct.num_nui_params:self._mct.num_processes+self._mct.num_nui_params+self._mct.num_rate_uncertainties]**2
+        )
 
         return nll_value
 
