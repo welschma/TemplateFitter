@@ -22,7 +22,7 @@ class Template1d(AbstractTemplate):
         pretty_variable=None,
         pretty_label=None,
     ):
-        super(Template1d, self).__init__(name=name)
+        super().__init__(name=name)
 
         self._hist = hist1d
         self._flat_bin_counts = self._hist.bin_counts.flatten()
@@ -43,10 +43,10 @@ class Template1d(AbstractTemplate):
         """Add a new covariance matrix from a given systematic variation
         of the underlying histogram to the template."""
         hup = Hist1d(
-            bins=self._hist.num_bins, range=self._range, data=data, weights=weights_up
+            bins=self._hist.num_bins, range=self._hist.range, data=data, weights=weights_up
         )
         hdown = Hist1d(
-            bins=self._hist.num_bins, range=self._range, data=data, weights=weights_down
+            bins=self._hist.num_bins, range=self._hist.range, data=data, weights=weights_down
         )
 
         self._add_cov_mat(hup, hdown)
@@ -69,10 +69,12 @@ class Template1d(AbstractTemplate):
             width=self._hist.bin_widths,
             bottom=self.values - self.errors,
             color="black",
-            hatch="///////",
+            hatch="/////////",
             fill=False,
+            label="Uncertainty",
             lw=0,
         )
 
         ax.set_xlabel(self.pretty_variable if self.pretty_variable is not None
                       else self._variable)
+

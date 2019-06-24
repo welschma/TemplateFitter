@@ -33,6 +33,7 @@ class AbstractTemplate(ABC):
         self._inv_corr = None
         self._relative_errors = None
 
+
     # -- properties --
 
     @property
@@ -130,6 +131,7 @@ class AbstractTemplate(ABC):
         """Initializes template parameters.
         """
         self._params = np.zeros(self._num_bins + 1)
+        self._param_errors = np.zeros(self._num_bins + 1)
         self._params[0] = np.sum(self._hist.bin_counts)
 
     def _init_errors(self):
@@ -186,7 +188,7 @@ class AbstractTemplate(ABC):
         given histogram up and down variations.
         """
         cov_mat = get_systematic_cov_mat(
-            self._flat_bin_counts, hup.bin_counts.flatten(), hdown.bin_counts.flatten()
+            hup.bin_counts.flatten(), hdown.bin_counts.flatten()
         )
         self._cov_mats.append(np.copy(cov_mat))
 

@@ -82,6 +82,9 @@ mct.define_process("signal")
 mct.define_process("remaining")
 mct.define_process("xulnu")
 
+mct.add_rate_uncertainty("signal", 0.5)
+mct.add_rate_uncertainty("remaining", 0.5)
+mct.add_rate_uncertainty("xulnu", 1.5)
 
 mct.add_template("e", "xulnu", e_txulnu, e_xulnu_eff)
 mct.add_template("e", "remaining", e_tremaining, e_remaining_eff)
@@ -104,17 +107,17 @@ fitter = tf.TemplateFitter(mct, "iminuit")
 
 
 fitter.do_fit(update_templates=True)
-
-print(fitter.get_significance("signal"))
-
-for channel in mct.channels.values():
-    fig, axis = plt.subplots(1,1, figsize=(8,8))
-    channel.plot_stacked_on(axis)
-    axis.legend()
-
-sig_yield, nll_profile, hesse = fitter.profile("signal_yield", num_cpu=25)
-fig, ax = plt.subplots(1,1, figsize=(8,8), dpi=200)
-ax.plot(sig_yield, nll_profile, label="profile")
-ax.plot(sig_yield, hesse, label="hesse approx.")
-plt.show()
+print(mct.rate_uncertainties_nui_params)
+# print(fitter.get_significance("signal"))
+#
+# for channel in mct.channels.values():
+#     fig, axis = plt.subplots(1,1, figsize=(8,8))
+#     channel.plot_stacked_on(axis)
+#     axis.legend()
+#
+# sig_yield, nll_profile, hesse = fitter.profile("signal_yield", num_cpu=25)
+# fig, ax = plt.subplots(1,1, figsize=(8,8), dpi=200)
+# ax.plot(sig_yield, nll_profile, label="profile")
+# ax.plot(sig_yield, hesse, label="hesse approx.")
+# plt.show()
 

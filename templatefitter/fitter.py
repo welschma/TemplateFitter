@@ -77,7 +77,8 @@ class TemplateFitter:
         if fix_nui_params:
             for i in range(self._templates.num_processes,
                            self._templates.num_nui_params +
-                           self._templates.num_processes):
+                           self._templates.num_processes +
+                           self._templates.num_rate_uncertainties):
                 minimizer.set_param_fixed(i)
 
         for param_id in self._fixed_parameters:
@@ -194,17 +195,24 @@ class TemplateFitter:
                            self._templates.num_nui_params +
                            self._templates.num_processes):
                 minimizer.set_param_fixed(i)
+
+        for fix_param_id in self._fixed_parameters:
+            minimizer.set_param_fixed(fix_param_id)
+
         print("Start nominal minimization")
         result = minimizer.minimize(self._nll.x0, get_hesse=True, verbose=True)
+
         minimum = result.fcn_min_val
         param_val, param_unc = minimizer.params[param_id]
+
         profile_points = np.linspace(
             param_val - sigma * param_unc, param_val + sigma * param_unc, num_points
         )
+
         hesse_approx = self._get_hesse_approx(param_id, result, profile_points)
 
         print(f"Start profiling the likelihood using {num_cpu} processes...")
-        args = [(minimizer, point, result.params.values, param_id) for point in
+        args = [(minimizer, point, result.params.values, param_id, fix_nui_params) for point in
                 profile_points]
         with Pool(num_cpu) as pool:
             profile_values = np.array(
@@ -219,8 +227,7 @@ class TemplateFitter:
 
         return profile_points, profile_values, hesse_approx
 
-    @staticmethod
-    def _profile_helper(args):
+    def _profile_helper(self, args):
         """Helper function for the calculation fo the profile nll.
 
         Parameters
@@ -244,7 +251,14 @@ class TemplateFitter:
         minimizer.release_params()
         param_index = minimizer.params.param_id_to_index(param_id)
         initial_values[param_index] = point
+        if args[4]:
+            for i in range(self._templates.num_processes,
+                           self._templates.num_nui_params +
+                           self._templates.num_processes):
+                minimizer.set_param_fixed(i)
         minimizer.set_param_fixed(param_id)
+        for param_id in self._fixed_parameters:
+            minimizer.set_param_fixed(param_id)
 
         try:
             loop_result = minimizer.minimize(initial_values, get_hesse=False)
@@ -300,7 +314,8 @@ class TemplateFitter:
         if fix_nui_params:
             for i in range(self._templates.num_processes,
                            self._templates.num_nui_params +
-                           self._templates.num_processes):
+                           self._templates.num_processes +
+                           self._templates.num_rate_uncertainties):
                 minimizer.set_param_fixed(i)
 
         print("Perform nominal minimization:")

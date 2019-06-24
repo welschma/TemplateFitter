@@ -47,6 +47,10 @@ class Channel:
         return self._bins
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def num_bins(self):
         """int: Number of bins per template."""
         return reduce(lambda x, y: x*y, self.bins)
@@ -65,6 +69,13 @@ class Channel:
             return True
         else:
             return False
+
+    @property
+    def data(self):
+        if self.has_data:
+            return self._hdata
+        else:
+            raise RuntimeError(f"Channel {self.name} has no dataset yet.")
 
     @property
     def num_nui_params(self):
@@ -189,14 +200,14 @@ class Channel:
             width=bin_width,
             bottom=total_bin_count - total_uncertainty,
             color="black",
-            hatch="///////",
+            hatch="/////////",
             fill=False,
             lw=0,
-            label="MC Uncertainty"
+            label="Uncertainty"
         )
 
         if self._hdata is None:
-            return ax
+            return bin_width[0]
 
         data_bin_mids = self._hdata.bin_mids
         data_bin_counts = self._hdata.bin_counts
@@ -221,6 +232,15 @@ class Channel:
 
             ax.errorbar(x=data_bin_mids, y=data_bin_counts, yerr=np.sqrt(data_bin_errors_sq),
                         ls="", marker=".", color="black", label="Data")
+
+        return bin_width[0]
+
+    # @property
+    # def values(self):
+    #     values = np.zeros(self.num_bins)
+    #     for template in self.templates.values()
+    #         values += template.values()
+    #     return values
 
     def nll_contribution(self, process_yields, nui_params):
         """Calculates the contribution to the binned negative log

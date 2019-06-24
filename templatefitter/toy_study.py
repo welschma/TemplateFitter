@@ -119,6 +119,46 @@ class ToyStudy:
 
         return param_points, param_fit_results, param_fit_errors
 
+    def do_background_linearity_test(self, signal_id, background_id, limits, n_points=10, n_exp=200):
+        """UPDATE
+
+        Parameters
+        ----------
+        process_id : str
+            Name of the template for which the linearity test
+            should be performed.
+        limits : tuple of float
+            Range where the yield parameter will be tested in.
+        n_points : int, optional
+            Number of points to test in the given range. This
+            samples `n_points` in a linear space in the range
+            specified by `limits`. Default is 10.
+        n_exp : int, optional
+            Number of toy experiments to perform per point.
+            Default is 100.
+        """
+        param_fit_results = list()
+        param_fit_errors = list()
+        param_points = np.linspace(*limits, n_points)
+
+        print(f"Performing linearity test for parameter: {signal_id}")
+        for param_point in tqdm.tqdm(param_points, desc="Linearity Test Progress"):
+            self._reset_state()
+            self._templates.reset_parameters()
+
+            self._templates.set_yield(background_id, param_point)
+
+            for _ in tqdm.tqdm(range(n_exp), desc="Experiment Progress"):
+                self._experiment(get_hesse=False)
+
+            self._is_fitted = True
+
+            params, _ = self.get_toy_results(signal_id)
+            param_fit_results.append(np.mean(params))
+            param_fit_errors.append(np.std(params))
+
+        return param_points, param_fit_results, param_fit_errors
+
     @property
     def result_parameters(self):
         """np.ndarray: A 2D array of fit results for the parameters

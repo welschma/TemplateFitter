@@ -1,8 +1,9 @@
 from itertools import islice
-
+import logging
 import numpy as np
 from numba import jit, vectorize, float64, float32
 
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = ["cov2corr", "corr2cov", "xlogyx", "get_systematic_cov_mat",
            "array_split_into"]
@@ -76,9 +77,11 @@ def id_to_index(names, param_id):
     return param_index
 
 
-# @jit(nopython=True, cache=True)
+# @jit(nopython=True, parallel=False, cache=True)
 @vectorize([float32(float32, float32),
-            float64(float64, float64)])
+            float64(float64, float64)],
+           # target="parallel"
+           )
 def xlogyx(x, y):
     """Compute :math:`x*log(y/x)`to a good precision when :math:`y~x`.
     The xlogyx function is taken from https://github.com/scikit-hep/probfit/blob/master/probfit/_libstat.pyx.
@@ -99,9 +102,10 @@ def xlogyx(x, y):
     #         result[i] = x[i] * np.log1p((y[i] - x[i])/x[i])
     #     else:
     #         result[i] = -x[i] * np.log1p((x[i] - y[i])/y[i])
+    # return result
 
 
-def get_systematic_cov_mat(hnom, hup, hdown):
+def get_systematic_cov_mat(hup, hdown):
     """Calculates covariance matrix from systematic variations
     for a histogram.
 
@@ -110,16 +114,9 @@ def get_systematic_cov_mat(hnom, hup, hdown):
     Covariance Matrix : numpy.ndarray
         Shape is (`num_bins`, `num_bins`).
     """
-    sign = np.ones_like(hup)
-    mask = hup < hdown
-    sign[mask] = -1
+    diff_sym = (hup - hdown) / 2
 
-    diff_up = np.abs(hup - hnom)
-    diff_down = np.abs(hdown - hnom)
-    diff_sym = (diff_up + diff_down) / 2
-    signed_diff = sign * diff_sym
-
-    return np.outer(signed_diff, signed_diff)
+    return np.outer(diff_sym, diff_sym)
 
 
 def array_split_into(iterable, sizes):

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 import numpy as np
+from numba import jit
 
 from templatefitter.histograms import Hist1d, Hist2d
 from templatefitter.templates import Channel, Template1d, Template2d
@@ -246,6 +247,7 @@ class MultiChannelTemplate:
         epsilon = 1 + nui_params*self.rate_uncertainties
         per_yield_epsilon = np.split(epsilon, np.cumsum(self.num_rate_uncertainties_per_process)[1:])
         return np.array([np.prod(eps) for eps in per_yield_epsilon])
+        # return multiply_rate_uncertainties(nui_params, self.rate_uncertainties, self.num_rate_uncertainties_per_process)
 
     def generate_per_channel_parameters(self, x):
         """
@@ -260,16 +262,16 @@ class MultiChannelTemplate:
         """
         yields = x[:self.num_processes]
         nui_params = x[self.num_processes: self.num_nui_params+self.num_processes]
-        per_yield_rate_unc = self.multiplicative_rate_uncertainty(
-            x[self.num_processes+self.num_nui_params:self.num_processes+self.num_nui_params+self.num_rate_uncertainties]
-        )
-        yields *= per_yield_rate_unc
+        # per_yield_rate_unc = self.multiplicative_rate_uncertainty(
+        #     x[self.num_processes+self.num_nui_params:self.num_processes+self.num_nui_params+self.num_rate_uncertainties]
+        # )
+        # yields *= per_yield_rate_unc
         per_channel_yields = [yields[channel.process_indices(self.processes)]
                               for channel in self.channels.values()]
 
         per_channel_num_nui_params = [channel.num_nui_params for channel in self.channels.values()]
-        per_channel_nui_params = np.split(nui_params, np.cumsum(per_channel_num_nui_params)[:-1])
-        # per_channel_nui_params = list(array_split_into(nui_params, per_channel_num_nui_params))
+        # per_channel_nui_params = np.split(nui_params, np.cumsum(per_channel_num_nui_params)[:-1])
+        per_channel_nui_params = list(array_split_into(nui_params, per_channel_num_nui_params))
 
         return per_channel_yields, per_channel_nui_params
 
@@ -284,7 +286,9 @@ class MultiChannelTemplate:
         -------
 
         """
-        self.rate_uncertainties_nui_params = new_values[-self.num_rate_uncertainties:]
+        if self.num_rate_uncertainties > 0:
+            self.rate_uncertainties_nui_params = new_values[-self.num_rate_uncertainties:]
+
         per_ch_yields, per_ch_nui_params = self.generate_per_channel_parameters(new_values)
 
         for channel, ch_yields, ch_nui_params in zip(self.channels.values(), per_ch_yields, per_ch_nui_params):
@@ -421,3 +425,8 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
         return nll_value
 
 
+# @jit(nopython=True)
+def multiply_rate_uncertainties(nui_params, rate_unc, num_rate_unc_pprocess):
+        epsilon = 1 + nui_params*rate_unc
+        per_yield_epsilon = np.split(epsilon, np.cumsum(num_rate_unc_pprocess)[1:])
+        return np.array([np.prod(eps) for eps in per_yield_epsilon])
