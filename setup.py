@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from pathlib import Path
 
 this_dir = Path(__file__).resolve().parent
@@ -14,9 +14,7 @@ setup(
     version="0.0.1",
     author="Maximilian Welsch",
     url="https://github.com/welschma/TemplateFitter",
-    packages=[
-        "templatefitter"
-    ],
+    packages=find_packages(),
     description="Perform extended binnend log-likelhood fits using histogram templates as pdfs.",
     install_requires=install_requires
 )
