@@ -1,5 +1,6 @@
 import logging
 
+import numpy as np
 
 from templatefitter.histograms import Hist1d
 from templatefitter.templates import AbstractTemplate
@@ -50,6 +51,15 @@ class Template1d(AbstractTemplate):
         )
 
         self._add_cov_mat(hup, hdown)
+
+
+    def add_cov_mat(self, cov_mat: np.ndarray):
+        if (self.num_bins, self.num_bins) != cov_mat.shape:
+            raise ValueError(f"Covariance matrix shape does not match number of bins.")
+        
+        self._cov_mats.append(cov_mat)
+
+
 
     def plot_on(self, ax):
         """Plots the template on given axis.
