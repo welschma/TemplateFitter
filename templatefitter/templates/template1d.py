@@ -4,6 +4,7 @@ import numpy as np
 
 from templatefitter.histograms import Hist1d
 from templatefitter.templates import AbstractTemplate
+from templatefitter.utility import get_systematic_cov_mat
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -23,7 +24,7 @@ class Template1d(AbstractTemplate):
         pretty_variable=None,
         pretty_label=None,
     ):
-        super(Template1d, self).__init__(name=name)
+        super().__init__(name=name)
 
         self._hist = hist1d
         self._flat_bin_counts = self._hist.bin_counts.flatten()
