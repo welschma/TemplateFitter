@@ -181,13 +181,11 @@ class AbstractTemplate(ABC):
         """
         return bin_fractions(nui_params, self._flat_bin_counts, self._relative_errors)
 
-    def _add_cov_mat(self, hup, hdown):
+    def _add_cov_mat(self, cov_mat):
         """Helper function. Calculates a covariance matrix from
         given histogram up and down variations.
         """
-        cov_mat = get_systematic_cov_mat(
-            self._flat_bin_counts, hup.bin_counts.flatten(), hdown.bin_counts.flatten()
-        )
+        
         self._cov_mats.append(np.copy(cov_mat))
 
         self._cov += cov_mat

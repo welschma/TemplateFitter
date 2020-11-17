@@ -49,15 +49,17 @@ class Template1d(AbstractTemplate):
         hdown = Hist1d(
             bins=self._hist.num_bins, range=self._range, data=data, weights=weights_down
         )
-
-        self._add_cov_mat(hup, hdown)
+        cov_mat = get_systematic_cov_mat(
+            self._flat_bin_counts, hup.bin_counts.flatten(), hdown.bin_counts.flatten()
+        )
+        self._add_cov_mat(cov_mat)
 
 
     def add_cov_mat(self, cov_mat: np.ndarray):
         if (self.num_bins, self.num_bins) != cov_mat.shape:
             raise ValueError(f"Covariance matrix shape does not match number of bins.")
         
-        self._cov_mats.append(cov_mat)
+        self._add_cov_mat(cov_mat)
 
 
 
