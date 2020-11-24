@@ -22,6 +22,7 @@ class MultiChannelTemplate:
     def __init__(self):
         self._channel_dict = OrderedDict()
         self._processes = tuple()
+        self._constrained_yields = tuple()
 
     @property
     def num_nui_params(self):
@@ -40,6 +41,19 @@ class MultiChannelTemplate:
                     continue
 
         return yields
+
+    @property
+    def process_yield_errors(self):
+        yield_errors_sq = np.zeros(self.num_processes)
+
+        for process in self.processes:
+            for channel in self.channels.values():
+                try:
+                    yield_errors_sq[self.process_to_index(process)] += np.sum(channel[process].errors**2)
+                except KeyError:
+                    continue
+
+        return np.sqrt(yield_errors_sq)
 
     @property
     def nui_params(self):
@@ -70,6 +84,13 @@ class MultiChannelTemplate:
     def processes(self):
         """tuple of str: Names of defined processes."""
         return self._processes
+
+    def add_gaussian_constraint_on_yield(self, process_name):
+        if process_name not in self._processes:
+            raise RuntimeError(f"Process {process_name} already defined.")
+            
+        self._constrained_yields = (*self.constrained_yields , process_name)
+    
 
     def define_channel(self, name, bins, range):
         """Creates and stores `Channel` instances in the internal
