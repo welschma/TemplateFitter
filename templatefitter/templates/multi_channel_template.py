@@ -90,7 +90,10 @@ class MultiChannelTemplate:
             raise RuntimeError(f"Process {process_name} already defined.")
             
         self._constrained_yields = (*self.constrained_yields , process_name)
-    
+
+    @property
+    def constrained_yields(self):
+        return self._constrained_yields
 
     def define_channel(self, name, bins, range):
         """Creates and stores `Channel` instances in the internal
@@ -361,6 +364,15 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
         for channel, yields, nui_params in zip(self._mct.channels.values(), ch_yields, ch_nui_params):
 
             nll_value += channel.nll_contribution(yields, nui_params)
+
+        for process in self._mct.constrained_yields:
+            yield_index = self._mct.process_to_index(process)
+            process_yield = x[yield_index]
+            mc_expectation = self._mct.get_yield(process)
+            mc_error = self._mct.process_yield_errors[yield_index]
+
+            nll_value += 0.5*(process_yield - mc_expectation)**2/mc_error**2
+
 
         return nll_value
 
