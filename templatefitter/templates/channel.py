@@ -49,7 +49,7 @@ class Channel:
     @property
     def num_bins(self):
         """int: Number of bins per template."""
-        return reduce(lambda x, y: x*y, self.bins)
+        return reduce(lambda x, y: x * y, self.bins)
 
     @property
     def bin_edges(self):
@@ -69,7 +69,7 @@ class Channel:
     @property
     def num_nui_params(self):
         """int: Number of nuissance parameters in this channel."""
-        return self.num_templates*self.num_bins
+        return self.num_templates * self.num_bins
 
     @property
     def processes(self):
@@ -91,7 +91,7 @@ class Channel:
         for template in self.templates.values():
             template.reset()
 
-    def add_template(self, process, template, efficiency=1.):
+    def add_template(self, process, template, efficiency=1.0):
         """Adds a template for a specified process to the template.
 
         Parameters
@@ -108,7 +108,9 @@ class Channel:
         if self._check_template(template):
             self._add_template(process, template, efficiency)
         else:
-            raise RuntimeError("Trying to add a non compatible template with the Channel.")
+            raise RuntimeError(
+                "Trying to add a non compatible template with the Channel."
+            )
 
     def add_data(self, hdata):
         """Adds a binned dataset to this channel.
@@ -123,7 +125,9 @@ class Channel:
         if self._check_hist(hdata):
             self._hdata = hdata
         else:
-            raise RuntimeError("Given data histogram is not compatible with the Channel.")
+            raise RuntimeError(
+                "Given data histogram is not compatible with the Channel."
+            )
 
     @lru_cache()
     def process_indices(self, outer_process_list):
@@ -133,10 +137,13 @@ class Channel:
         return [outer_process_list.index(process) for process in self.processes]
 
     def update_parameters(self, yields, nui_params):
-        for template, eff, new_yield, new_nui_params in \
-                zip(self.templates.values(), self.efficiencies.values(),
-                    np.split(yields, self.num_templates), np.split(nui_params, self.num_templates)):
-            template.yield_param = new_yield*eff
+        for template, eff, new_yield, new_nui_params in zip(
+            self.templates.values(),
+            self.efficiencies.values(),
+            np.split(yields, self.num_templates),
+            np.split(nui_params, self.num_templates),
+        ):
+            template.yield_param = new_yield * eff
             template.nui_params = new_nui_params
 
     def plot_stacked_on(self, ax, **kwargs):
@@ -150,8 +157,9 @@ class Channel:
         labels = [template.name for template in self.templates.values()]
 
         if self._dim > 1:
-            bin_counts = [self._get_projection(kwargs["projection"], bc) for bc
-                          in bin_counts]
+            bin_counts = [
+                self._get_projection(kwargs["projection"], bc) for bc in bin_counts
+            ]
             axis = kwargs["projection"]
             ax_to_index = {
                 "x": 0,
@@ -170,18 +178,20 @@ class Channel:
             lw=0.5,
             color=colors,
             label=labels,
-            stacked=True
+            stacked=True,
         )
 
-        uncertainties_sq = [template.errors ** 2 for template in
-                            self._template_dict.values()]
+        uncertainties_sq = [
+            template.errors ** 2 for template in self._template_dict.values()
+        ]
         if self._dim > 1:
             uncertainties_sq = [
-                self._get_projection(kwargs["projection"], unc_sq) for unc_sq in uncertainties_sq
+                self._get_projection(kwargs["projection"], unc_sq)
+                for unc_sq in uncertainties_sq
             ]
 
         total_uncertainty = np.sqrt(np.sum(np.array(uncertainties_sq), axis=0))
-    
+
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
 
         ax.bar(
@@ -193,7 +203,7 @@ class Channel:
             hatch="///////",
             fill=False,
             lw=0,
-            label="MC Uncertainty"
+            label="MC Uncertainty",
         )
 
         if self._hdata is None:
@@ -220,8 +230,15 @@ class Channel:
                 }
                 data_bin_mids = data_bin_mids[ax_to_index[axis]]
 
-            ax.errorbar(x=data_bin_mids, y=data_bin_counts, yerr=np.sqrt(data_bin_errors_sq),
-                        ls="", marker=".", color="black", label="Data")
+            ax.errorbar(
+                x=data_bin_mids,
+                y=data_bin_counts,
+                yerr=np.sqrt(data_bin_errors_sq),
+                ls="",
+                marker=".",
+                color="black",
+                label="Data",
+            )
 
     def plot_post_fit_stacked_on(self, ax, result_params, **kwargs):
 
@@ -234,8 +251,9 @@ class Channel:
         labels = [template.name for template in self.templates.values()]
 
         if self._dim > 1:
-            bin_counts = [self._get_projection(kwargs["projection"], bc) for bc
-                          in bin_counts]
+            bin_counts = [
+                self._get_projection(kwargs["projection"], bc) for bc in bin_counts
+            ]
             axis = kwargs["projection"]
             ax_to_index = {
                 "x": 0,
@@ -254,18 +272,24 @@ class Channel:
             lw=0.5,
             color=colors,
             label=labels,
-            stacked=True
+            stacked=True,
         )
 
-        uncertainties_sq = [(template.fractions(template.nui_params) * result_params[f"{name}_yield"][1])** 2 for name, template in
-                            self._template_dict.items()]
+        uncertainties_sq = [
+            (
+                template.fractions(template.nui_params)
+                * result_params[f"{name}_yield"][1]
+            )
+            ** 2
+            for name, template in self._template_dict.items()
+        ]
         if self._dim > 1:
             uncertainties_sq = [
-                self._get_projection(kwargs["projection"], unc_sq) for unc_sq in uncertainties_sq
+                self._get_projection(kwargs["projection"], unc_sq)
+                for unc_sq in uncertainties_sq
             ]
 
         total_uncertainty = np.sqrt(np.sum(np.array(uncertainties_sq), axis=0))
-        print(total_uncertainty)
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
 
         ax.bar(
@@ -277,7 +301,7 @@ class Channel:
             hatch="///////",
             fill=False,
             lw=0,
-            label="MC Uncertainty"
+            label="MC Uncertainty",
         )
 
         if self._hdata is None:
@@ -304,8 +328,15 @@ class Channel:
                 }
                 data_bin_mids = data_bin_mids[ax_to_index[axis]]
 
-            ax.errorbar(x=data_bin_mids, y=data_bin_counts, yerr=np.sqrt(data_bin_errors_sq),
-                        ls="", marker=".", color="black", label="Data")
+            ax.errorbar(
+                x=data_bin_mids,
+                y=data_bin_counts,
+                yerr=np.sqrt(data_bin_errors_sq),
+                ls="",
+                marker=".",
+                color="black",
+                label="Data",
+            )
 
     def nll_contribution(self, process_yields, nui_params):
         """Calculates the contribution to the binned negative log
@@ -325,14 +356,15 @@ class Channel:
         """
         data = self._hdata.bin_counts.flatten()
         exp_evts_per_bin = self._expected_evts_per_bin(process_yields, nui_params)
-        poisson_term = np.sum(exp_evts_per_bin - data -
-                              xlogyx(data, exp_evts_per_bin))
+        poisson_term = np.sum(exp_evts_per_bin - data - xlogyx(data, exp_evts_per_bin))
         gauss_term = self._gauss_term(nui_params)
 
         return poisson_term + gauss_term
 
     def generate_toy_dataset(self):
-        template_bin_counts = sum([template.values for template in self.templates.values()])
+        template_bin_counts = sum(
+            [template.values for template in self.templates.values()]
+        )
         toy_bin_counts = poisson.rvs(template_bin_counts)
 
         return self._htype.from_binned_data(
@@ -340,7 +372,9 @@ class Channel:
         )
 
     def generate_asimov_dataset(self, integer_values=False):
-        template_bin_counts = sum([template.values for template in self.templates.values()])
+        template_bin_counts = sum(
+            [template.values for template in self.templates.values()]
+        )
         if integer_values:
             asimov_bin_counts = np.rint(template_bin_counts)
         else:
@@ -352,10 +386,7 @@ class Channel:
 
     @staticmethod
     def _get_projection(ax, bc):
-        x_to_i = {
-            "x": 1,
-            "y": 0
-        }
+        x_to_i = {"x": 1, "y": 0}
 
         return np.sum(bc, axis=x_to_i[ax])
 
@@ -371,9 +402,11 @@ class Channel:
             self._htype = type(template._hist)
 
         if type(template) != self._template_type:
-            raise RuntimeError(f"Given template type of {type(template)} "
-                               f"does not match the template types in this "
-                               f"channel ({self._template_type}.")
+            raise RuntimeError(
+                f"Given template type of {type(template)} "
+                f"does not match the template types in this "
+                f"channel ({self._template_type}."
+            )
 
         self._processes = (*self._processes, process)
         self._template_dict[process] = template
@@ -400,8 +433,12 @@ class Channel:
         """
         nui_params_per_template = np.split(nui_params, self.num_templates)
         fractions_per_template = np.array(
-            [template.fractions(nui_params) for template, nui_params
-             in zip(self._template_dict.values(), nui_params_per_template)]
+            [
+                template.fractions(nui_params)
+                for template, nui_params in zip(
+                    self._template_dict.values(), nui_params_per_template
+                )
+            ]
         )
 
         return fractions_per_template
@@ -429,12 +466,15 @@ class Channel:
         expected_num_evts_per_bin : numpy.ndarray
             Shape is (`num_bins`,).
         """
-        return (process_yields * self._get_efficiencies_as_array()) @ self._fractions(nui_params)
+        return (process_yields * self._get_efficiencies_as_array()) @ self._fractions(
+            nui_params
+        )
 
     @lru_cache()
     def _create_block_diag_inv_corr_mat(self):
-        inv_corr_mats = [template.inv_corr_mat for template
-                         in self._template_dict.values()]
+        inv_corr_mats = [
+            template.inv_corr_mat for template in self._template_dict.values()
+        ]
         return block_diag(*inv_corr_mats)
 
     def _gauss_term(self, nui_params):
