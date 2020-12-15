@@ -53,7 +53,7 @@ class Parameters:
             "No": list(range(self._nparams)),
             "Name": self._names,
             "Value": self._values,
-            "Sym. Err": self.errors
+            "Sym. Err": self.errors,
         }
         return tabulate.tabulate(data, headers="keys")
 
@@ -168,7 +168,7 @@ class Parameters:
     @property
     def correlation(self):
         """np.ndarray: Parameter correlation matrix. Shape is
-         (`num_params`, `num_params`)."""
+        (`num_params`, `num_params`)."""
         return self._correlation
 
     @correlation.setter
@@ -232,8 +232,7 @@ class AbstractMinimizer(ABC):
 
     @property
     def fcn_min_val(self):
-        """str: Value of the objective function at it's estimated minimum.
-        """
+        """str: Value of the objective function at it's estimated minimum."""
         return self._fcn_min_val
 
     @property
@@ -268,8 +267,8 @@ class AbstractMinimizer(ABC):
     @property
     def param_correlation(self):
         """np.ndarray: Estimated correlation matrix of the parameters.
-         Shape is (`num_params`, `num_params`).
-         """
+        Shape is (`num_params`, `num_params`).
+        """
         return self._params.correlation
 
 
@@ -278,7 +277,7 @@ class IMinuitMinimizer(AbstractMinimizer):
         super().__init__(fcn, param_names)
         self._fixed_params = [False for _ in self.params.names]
 
-    def minimize(self, initial_params, verbose=False, errordef=0.5, **kwargs):
+    def minimize(self, initial_params, verbose=1, errordef=0.5, **kwargs):
 
         m = Minuit.from_array_func(
             self._fcn,
@@ -288,7 +287,7 @@ class IMinuitMinimizer(AbstractMinimizer):
             fix=self._fixed_params,
             name=self.params.names,
             limit=self._param_bounds,
-            print_level=1 if verbose else 0,
+            print_level=verbose,
         )
 
         # perform minimization twice!

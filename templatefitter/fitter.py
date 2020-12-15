@@ -16,6 +16,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # TODO work on fixing parameters and stuff
 
+
 class TemplateFitter:
     """This class performs the parameter estimation and calculation
     of a profile likelihood based on a constructed negative log
@@ -43,7 +44,9 @@ class TemplateFitter:
     def fix_nui_params(self):
         pass
 
-    def do_fit(self, update_templates=True, get_hesse=True, verbose=True, fix_nui_params=False):
+    def do_fit(
+        self, update_templates=True, get_hesse=True, verbose=1, fix_nui_params=False
+    ):
         """Performs maximum likelihood fit by minimizing the
         provided negative log likelihoood function.
 
@@ -75,9 +78,10 @@ class TemplateFitter:
         )
 
         if fix_nui_params:
-            for i in range(self._templates.num_processes,
-                           self._templates.num_nui_params +
-                           self._templates.num_processes):
+            for i in range(
+                self._templates.num_processes,
+                self._templates.num_nui_params + self._templates.num_processes,
+            ):
                 minimizer.set_param_fixed(i)
 
         for param_id in self._fixed_parameters:
@@ -156,7 +160,15 @@ class TemplateFitter:
 
         return hesse_approx
 
-    def profile(self, param_id, num_cpu=4, num_points=100, sigma=2.0, subtract_min=True, fix_nui_params=False):
+    def profile(
+        self,
+        param_id,
+        num_cpu=4,
+        num_points=100,
+        sigma=2.0,
+        subtract_min=True,
+        fix_nui_params=False,
+    ):
         """Performs a profile scan of the negative log likelihood
         function for the specified parameter.
 
@@ -190,9 +202,10 @@ class TemplateFitter:
         )
 
         if fix_nui_params:
-            for i in range(self._templates.num_processes,
-                           self._templates.num_nui_params +
-                           self._templates.num_processes):
+            for i in range(
+                self._templates.num_processes,
+                self._templates.num_nui_params + self._templates.num_processes,
+            ):
                 minimizer.set_param_fixed(i)
         print("Start nominal minimization")
         result = minimizer.minimize(self._nll.x0, get_hesse=True, verbose=True)
@@ -204,13 +217,19 @@ class TemplateFitter:
         hesse_approx = self._get_hesse_approx(param_id, result, profile_points)
 
         print(f"Start profiling the likelihood using {num_cpu} processes...")
-        args = [(minimizer, point, result.params.values, param_id) for point in
-                profile_points]
+        args = [
+            (minimizer, point, result.params.values, param_id)
+            for point in profile_points
+        ]
         with Pool(num_cpu) as pool:
             profile_values = np.array(
-                list(tqdm.tqdm(pool.imap(self._profile_helper, args),
-                               total=len(profile_points),
-                               desc="Profile Progess"))
+                list(
+                    tqdm.tqdm(
+                        pool.imap(self._profile_helper, args),
+                        total=len(profile_points),
+                        desc="Profile Progess",
+                    )
+                )
             )
 
         if subtract_min:
@@ -250,13 +269,14 @@ class TemplateFitter:
             loop_result = minimizer.minimize(initial_values, get_hesse=False)
         except RuntimeError as e:
             logging.info(e)
-            logging.info(f"Minimization with point {point} was not "
-                         f"sucessfull, trying again.")
+            logging.info(
+                f"Minimization with point {point} was not " f"sucessfull, trying again."
+            )
             return np.nan
 
         return loop_result.fcn_min_val
 
-    #TODO this is not yet generic, depens on param name in the likelihood
+    # TODO this is not yet generic, depens on param name in the likelihood
     def get_significance(self, process_id, verbose=True, fix_nui_params=False):
         """Calculate significance for yield parameter of template
         specified by `tid` using the profile likelihood ratio.
@@ -298,9 +318,10 @@ class TemplateFitter:
         )
 
         if fix_nui_params:
-            for i in range(self._templates.num_processes,
-                           self._templates.num_nui_params +
-                           self._templates.num_processes):
+            for i in range(
+                self._templates.num_processes,
+                self._templates.num_nui_params + self._templates.num_processes,
+            ):
                 minimizer.set_param_fixed(i)
 
         print("Perform nominal minimization:")
@@ -322,9 +343,10 @@ class TemplateFitter:
         )
 
         if fix_nui_params:
-            for i in range(self._templates.num_processes,
-                           self._templates.num_nui_params +
-                           self._templates.num_processes):
+            for i in range(
+                self._templates.num_processes,
+                self._templates.num_nui_params + self._templates.num_processes,
+            ):
                 minimizer.set_param_fixed(i)
         for param_id in self._fixed_parameters:
             minimizer.set_param_fixed(param_id)
@@ -339,5 +361,3 @@ class TemplateFitter:
         q0 = 2 * (profile_result.fcn_min_val - fit_result.fcn_min_val)
         logging.debug(f"q0: {q0}")
         return np.sqrt(q0)
-
-
