@@ -11,6 +11,7 @@ from numba import jit
 
 from templatefitter.utility import xlogyx
 
+
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
@@ -54,6 +55,10 @@ class Channel:
     @property
     def bin_edges(self):
         return list(self.templates.values())[0].bin_edges
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def range(self):
