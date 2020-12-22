@@ -13,8 +13,8 @@ __all__ = ["Template1d"]
 
 
 class Template1d(AbstractTemplate):
-    """A 1d template class.
-    """
+    """A 1d template class."""
+
     def __init__(
         self,
         name,
@@ -55,18 +55,14 @@ class Template1d(AbstractTemplate):
         )
         self._add_cov_mat(cov_mat)
 
-
     def add_cov_mat(self, cov_mat: np.ndarray):
         if (self.num_bins, self.num_bins) != cov_mat.shape:
             raise ValueError(f"Covariance matrix shape does not match number of bins.")
-        
+
         self._add_cov_mat(cov_mat)
 
-
-
     def plot_on(self, ax):
-        """Plots the template on given axis.
-        """
+        """Plots the template on given axis."""
         ax.hist(
             self._hist.bin_mids,
             weights=self.values,
@@ -87,5 +83,6 @@ class Template1d(AbstractTemplate):
             lw=0,
         )
 
-        ax.set_xlabel(self.pretty_variable if self.pretty_variable is not None
-                      else self._variable)
+        ax.set_xlabel(
+            self.pretty_variable if self.pretty_variable is not None else self._variable
+        )
