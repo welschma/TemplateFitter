@@ -265,7 +265,12 @@ class Channel:
 
         colors = [template.color for template in self.templates.values()]
         bin_counts = [template.values for template in self.templates.values()]
-        labels = [template.name for template in self.templates.values()]
+        labels = [
+            template.pretty_label
+            if template.pretty_label is not None
+            else template.name
+            for template in self.templates.values()
+        ]
 
         if self._dim > 1:
             bin_counts = [
