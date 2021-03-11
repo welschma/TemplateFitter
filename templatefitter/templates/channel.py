@@ -208,6 +208,11 @@ class Channel:
 
     def plot_stacked_on(self, ax, **kwargs):
 
+        if self._dim > 1:
+            raise NotImplementedError(
+                "Plotting for hihger dimensions is not implemented yet"
+            )
+
         bin_mids = [template.bin_mids for template in self.templates.values()]
         bin_edges = next(iter(self.templates.values())).bin_edges
         bin_width = next(iter(self.templates.values())).bin_widths
@@ -220,19 +225,6 @@ class Channel:
             else template.name
             for template in self.templates.values()
         ]
-
-        if self._dim > 1:
-            bin_counts = [
-                self._get_projection(kwargs["projection"], bc) for bc in bin_counts
-            ]
-            axis = kwargs["projection"]
-            ax_to_index = {
-                "x": 0,
-                "y": 1,
-            }
-            bin_mids = [mids[ax_to_index[axis]] for mids in bin_mids]
-            bin_edges = bin_edges[ax_to_index[axis]]
-            bin_width = bin_width[ax_to_index[axis]]
 
         ax.hist(
             bin_mids,
@@ -249,11 +241,6 @@ class Channel:
         uncertainties_sq = [
             template.errors ** 2 for template in self._template_dict.values()
         ]
-        if self._dim > 1:
-            uncertainties_sq = [
-                self._get_projection(kwargs["projection"], unc_sq)
-                for unc_sq in uncertainties_sq
-            ]
 
         total_uncertainty = np.sqrt(np.sum(np.array(uncertainties_sq), axis=0))
 
@@ -280,21 +267,6 @@ class Channel:
 
         if self.has_data:
 
-            if self._dim > 1:
-                data_bin_counts = self._get_projection(
-                    kwargs["projection"], data_bin_counts
-                )
-                data_bin_errors_sq = self._get_projection(
-                    kwargs["projection"], data_bin_errors_sq
-                )
-
-                axis = kwargs["projection"]
-                ax_to_index = {
-                    "x": 0,
-                    "y": 1,
-                }
-                data_bin_mids = data_bin_mids[ax_to_index[axis]]
-
             ax.errorbar(
                 x=data_bin_mids,
                 y=data_bin_counts,
@@ -306,6 +278,10 @@ class Channel:
             )
 
     def plot_post_fit_stacked_on(self, ax, result_params, **kwargs):
+        if self._dim > 1:
+            raise NotImplementedError(
+                "Plotting for hihger dimensions is not implemented yet"
+            )
 
         bin_mids = [template.bin_mids for template in self.templates.values()]
         bin_edges = next(iter(self.templates.values())).bin_edges
@@ -319,19 +295,6 @@ class Channel:
             else template.name
             for template in self.templates.values()
         ]
-
-        if self._dim > 1:
-            bin_counts = [
-                self._get_projection(kwargs["projection"], bc) for bc in bin_counts
-            ]
-            axis = kwargs["projection"]
-            ax_to_index = {
-                "x": 0,
-                "y": 1,
-            }
-            bin_mids = [mids[ax_to_index[axis]] for mids in bin_mids]
-            bin_edges = bin_edges[ax_to_index[axis]]
-            bin_width = bin_width[ax_to_index[axis]]
 
         ax.hist(
             bin_mids,
@@ -394,21 +357,6 @@ class Channel:
         data_bin_errors_sq = self._hdata.bin_errors_sq
 
         if self.has_data:
-
-            if self._dim > 1:
-                data_bin_counts = self._get_projection(
-                    kwargs["projection"], data_bin_counts
-                )
-                data_bin_errors_sq = self._get_projection(
-                    kwargs["projection"], data_bin_errors_sq
-                )
-
-                axis = kwargs["projection"]
-                ax_to_index = {
-                    "x": 0,
-                    "y": 1,
-                }
-                data_bin_mids = data_bin_mids[ax_to_index[axis]]
 
             ax.errorbar(
                 x=data_bin_mids,
