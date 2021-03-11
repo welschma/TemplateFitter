@@ -19,6 +19,8 @@ class MultiChannelTemplate:
         self._channel_dict = OrderedDict()
         self._processes = tuple()
         self._constrained_yields = tuple()
+        self._constrained_yield_values = dict()
+        self._constrained_yield_errors = dict()
 
     @property
     def num_nui_params(self):
@@ -393,12 +395,13 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
         for process in self._mct.constrained_yields:
             yield_index = self._mct.process_to_index(process)
             process_yield = x[yield_index]
-            mc_expectation = self._mct.get_yield(process)
-            mc_error = self._mct.process_yield_errors[yield_index]
+            constrained_yield = self._mct._constrained_yield_values[process]
+            constrained_yield_error = self._mct._constrained_yield_errors[process]
 
-            nll_value += 0.5*(process_yield - mc_expectation)**2/mc_error**2
-
+            nll_value += (
+                0.5
+                * (process_yield - constrained_yield) ** 2
+                / constrained_yield_error ** 2
+            )
 
         return nll_value
-
-
