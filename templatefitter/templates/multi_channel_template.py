@@ -11,10 +11,7 @@ from templatefitter.utility import array_split_into
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-__all__ = [
-    "MultiChannelTemplate",
-    "NegLogLikelihood"
-]
+__all__ = ["MultiChannelTemplate", "NegLogLikelihood"]
 
 
 class MultiChannelTemplate:
@@ -36,7 +33,9 @@ class MultiChannelTemplate:
         for process in self.processes:
             for channel in self.channels.values():
                 try:
-                    yields[self.process_to_index(process)] += channel[process].yield_param
+                    yields[self.process_to_index(process)] += channel[
+                        process
+                    ].yield_param
                 except KeyError:
                     continue
 
@@ -49,7 +48,9 @@ class MultiChannelTemplate:
         for process in self.processes:
             for channel in self.channels.values():
                 try:
-                    yield_errors_sq[self.process_to_index(process)] += np.sum(channel[process].errors**2)
+                    yield_errors_sq[self.process_to_index(process)] += np.sum(
+                        channel[process].errors ** 2
+                    )
                 except KeyError:
                     continue
 
@@ -85,15 +86,26 @@ class MultiChannelTemplate:
         """tuple of str: Names of defined processes."""
         return self._processes
 
-    def add_gaussian_constraint_on_yield(self, process_name):
+    def add_gaussian_constraint_on_yield(
+        self, process_name, constr_value, constr_error
+    ):
         if process_name not in self._processes:
-            raise RuntimeError(f"Process {process_name} already defined.")
-            
-        self._constrained_yields = (*self.constrained_yields , process_name)
+            raise RuntimeError(f"Process {process_name} not defined.")
+        self._constrained_yields = (*self.constrained_yields, process_name)
+        self._constrained_yield_values[process_name] = constr_value
+        self._constrained_yield_errors[process_name] = constr_error
 
     @property
     def constrained_yields(self):
         return self._constrained_yields
+
+    @property
+    def constrained_yield_values(self):
+        return self._constrained_yield_values
+
+    @property
+    def constrained_yield_errors(self):
+        return self._constrained_yield_errors
 
     def define_channel(self, name, bins, range):
         """Creates and stores `Channel` instances in the internal
@@ -180,7 +192,9 @@ class MultiChannelTemplate:
 
         for channel in self.channels.values():
             try:
-                channel[process_id].yield_param = value*channel.efficiencies[process_id]
+                channel[process_id].yield_param = (
+                    value * channel.efficiencies[process_id]
+                )
             except KeyError:
                 continue
 
@@ -222,14 +236,20 @@ class MultiChannelTemplate:
         -------
 
         """
-        yields = x[:self.num_processes]
-        nui_params = x[self.num_processes: self.num_nui_params+self.num_processes]
+        yields = x[: self.num_processes]
+        nui_params = x[self.num_processes : self.num_nui_params + self.num_processes]
 
-        per_channel_yields = [yields[channel.process_indices(self.processes)]
-                              for channel in self.channels.values()]
+        per_channel_yields = [
+            yields[channel.process_indices(self.processes)]
+            for channel in self.channels.values()
+        ]
 
-        per_channel_num_nui_params = [channel.num_nui_params for channel in self.channels.values()]
-        per_channel_nui_params = np.split(nui_params, np.cumsum(per_channel_num_nui_params)[:-1])
+        per_channel_num_nui_params = [
+            channel.num_nui_params for channel in self.channels.values()
+        ]
+        per_channel_nui_params = np.split(
+            nui_params, np.cumsum(per_channel_num_nui_params)[:-1]
+        )
         # per_channel_nui_params = list(array_split_into(nui_params, per_channel_num_nui_params))
 
         return per_channel_yields, per_channel_nui_params
@@ -246,9 +266,13 @@ class MultiChannelTemplate:
 
         """
 
-        per_ch_yields, per_ch_nui_params = self.generate_per_channel_parameters(new_values)
+        per_ch_yields, per_ch_nui_params = self.generate_per_channel_parameters(
+            new_values
+        )
 
-        for channel, ch_yields, ch_nui_params in zip(self.channels.values(), per_ch_yields, per_ch_nui_params):
+        for channel, ch_yields, ch_nui_params in zip(
+            self.channels.values(), per_ch_yields, per_ch_nui_params
+        ):
             channel.update_parameters(ch_yields, ch_nui_params)
 
     def create_nll(self):
@@ -307,6 +331,7 @@ class AbstractTemplateCostFunction(ABC):
 
     def __init__(self):
         pass
+
     # -- abstract properties
 
     @property
@@ -329,7 +354,6 @@ class AbstractTemplateCostFunction(ABC):
 
 
 class NegLogLikelihood(AbstractTemplateCostFunction):
-
     def __init__(self, multi_channel_template: MultiChannelTemplate):
         super().__init__()
         self._mct = multi_channel_template
@@ -350,9 +374,9 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
         for ch_name, channel in self._mct.channels.items():
             per_channel_names = []
             for temp_name, template in channel.templates.items():
-                per_channel_names.extend([
-                    f"{ch_name}_{temp_name}_bin_{i}" for i in range(template.num_bins)
-                ])
+                per_channel_names.extend(
+                    [f"{ch_name}_{temp_name}_bin_{i}" for i in range(template.num_bins)]
+                )
             nui_param_names.extend(per_channel_names)
 
         return yield_names + nui_param_names
@@ -361,7 +385,9 @@ class NegLogLikelihood(AbstractTemplateCostFunction):
         ch_yields, ch_nui_params = self._mct.generate_per_channel_parameters(x)
         nll_value = 0
 
-        for channel, yields, nui_params in zip(self._mct.channels.values(), ch_yields, ch_nui_params):
+        for channel, yields, nui_params in zip(
+            self._mct.channels.values(), ch_yields, ch_nui_params
+        ):
 
             nll_value += channel.nll_contribution(yields, nui_params)
 
