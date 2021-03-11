@@ -414,7 +414,7 @@ class Channel:
 
     def _add_template(self, process, template, efficiency):
         if process in self.processes:
-            raise RuntimeError(f"Process {name} already defined.")
+            raise RuntimeError(f"Process {process} already defined.")
 
         if self._dim is None:
             self._dim = len(template.bins)
