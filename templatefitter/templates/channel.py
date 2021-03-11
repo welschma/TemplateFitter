@@ -191,10 +191,17 @@ class Channel:
 
         return bin_by_bin_cov
 
-    def get_post_fit_bin_uncertainty(self, result_params: Parameters):
+    def get_post_fit_bin_uncertainty(self, result_params: Parameters) -> np.ndarray:
+        """Returns the post fit bin uncertainties from the
+        post fit bin by bin covariance matrix.
+        """
         return np.sqrt(np.diag(self.propagate_parameter_uncertainties(result_params)))
 
     def bin_counts_from_param_values(self, param_values: np.ndarray) -> np.ndarray:
+        """Returns the total bin counts from all templates given
+        some parameter values including yields and nuisance
+        parameters.
+        """
         return self._expected_evts_per_bin(
             param_values[: self.num_templates], param_values[self.num_templates :]
         )
