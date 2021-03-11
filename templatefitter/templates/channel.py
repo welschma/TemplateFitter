@@ -72,6 +72,13 @@ class Channel:
             return False
 
     @property
+    def data_bin_counts(self):
+        if self._hdata is not None:
+            return self._hdata.bin_counts
+        else:
+            raise RuntimeError("Add data histogram first!")
+
+    @property
     def num_nui_params(self):
         """int: Number of nuissance parameters in this channel."""
         return self.num_templates * self.num_bins
