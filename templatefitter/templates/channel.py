@@ -308,31 +308,6 @@ class Channel:
             stacked=True,
         )
 
-        # uncertainties_sq = [
-        #     (
-        #         template.fractions(template.nui_params)
-        #         * result_params[f"{name}_yield"][1]
-        #     )
-        #     ** 2
-        #     for name, template in self._template_dict.items()
-        # ]
-        if self._dim > 1:
-            raise NotImplementedError(
-                "Plotting for hihger dimensions is not implemented yet"
-            )
-
-        # total_uncertainty = np.sqrt(np.sum(np.array(uncertainties_sq), axis=0))
-        # print(total_uncertainty)
-
-        jac = nd.Jacobian(self.bin_counts_from_param_values)(result_params.values)
-        total_uncertainty = np.array(
-            [
-                np.sqrt(jac[i] @ result_params.covariance @ np.transpose(jac[i]))
-                for i in range(self.num_bins)
-            ]
-        )
-        # print(total_uncertainty)
-
         post_fit_cov = self.propagate_parameter_uncertainties(result_params)
         total_uncertainty = np.sqrt(np.diag(post_fit_cov))
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
