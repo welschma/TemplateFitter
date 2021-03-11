@@ -3,12 +3,17 @@ import logging
 from collections import OrderedDict
 from functools import lru_cache, reduce
 
+from typing import Tuple
+
 import numpy as np
+import numdifftools as nd
 
 from scipy.linalg import block_diag
 from scipy.stats import poisson
 from numba import jit
 
+
+from templatefitter.minimizer import Parameters
 from templatefitter.utility import xlogyx
 
 
@@ -158,6 +163,36 @@ class Channel:
             template.yield_param = new_yield * eff
             template.nui_params = new_nui_params
 
+    def split_parameter_array(
+        self, param_array: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Splits given parameter array into two subarrays. The first
+        array contains yield values while the second array stores the
+        nuisance parameters.
+        """
+
+        return param_array[: self.num_templates], param_array[self.num_templates :]
+
+    def propagate_parameter_uncertainties(
+        self, result_params: Parameters
+    ) -> np.ndarray:
+        """Propagates the post fit uncertainty of the fit parameters
+        to the bin counts via Gaussian error propagation and returns
+        the bin-by-bin post fit covariance matrix.
+        """
+
+        # create helper function to calculate bin counts purely via paramters
+        def exp_bin_counts(param_values):
+            yields, nui_params = self.split_parameter_array(param_values)
+            return self._expected_evts_per_bin(yields, nui_params)
+
+        jac = nd.Jacobian(exp_bin_counts)(result_params.values)
+        bin_by_bin_cov = jac @ result_params.covariance @ np.transpose(jac)
+
+        return bin_by_bin_cov
+
+    def get_post_fit_bin_uncertainty(self, result_params: Parameters):
+        return np.sqrt(np.diag(self.propagate_parameter_uncertainties(result_params)))
     def plot_stacked_on(self, ax, **kwargs):
 
         bin_mids = [template.bin_mids for template in self.templates.values()]
@@ -297,21 +332,33 @@ class Channel:
             stacked=True,
         )
 
-        uncertainties_sq = [
-            (
-                template.fractions(template.nui_params)
-                * result_params[f"{name}_yield"][1]
-            )
-            ** 2
-            for name, template in self._template_dict.items()
-        ]
+        # uncertainties_sq = [
+        #     (
+        #         template.fractions(template.nui_params)
+        #         * result_params[f"{name}_yield"][1]
+        #     )
+        #     ** 2
+        #     for name, template in self._template_dict.items()
+        # ]
         if self._dim > 1:
-            uncertainties_sq = [
-                self._get_projection(kwargs["projection"], unc_sq)
-                for unc_sq in uncertainties_sq
-            ]
+            raise NotImplementedError(
+                "Plotting for hihger dimensions is not implemented yet"
+            )
 
-        total_uncertainty = np.sqrt(np.sum(np.array(uncertainties_sq), axis=0))
+        # total_uncertainty = np.sqrt(np.sum(np.array(uncertainties_sq), axis=0))
+        # print(total_uncertainty)
+
+        jac = nd.Jacobian(self.bin_counts_from_param_values)(result_params.values)
+        total_uncertainty = np.array(
+            [
+                np.sqrt(jac[i] @ result_params.covariance @ np.transpose(jac[i]))
+                for i in range(self.num_bins)
+            ]
+        )
+        # print(total_uncertainty)
+
+        post_fit_cov = self.propagate_parameter_uncertainties(result_params)
+        total_uncertainty = np.sqrt(np.diag(post_fit_cov))
         total_bin_count = np.sum(np.array(bin_counts), axis=0)
 
         ax.bar(
