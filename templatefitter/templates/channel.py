@@ -193,6 +193,12 @@ class Channel:
 
     def get_post_fit_bin_uncertainty(self, result_params: Parameters):
         return np.sqrt(np.diag(self.propagate_parameter_uncertainties(result_params)))
+
+    def bin_counts_from_param_values(self, param_values: np.ndarray) -> np.ndarray:
+        return self._expected_evts_per_bin(
+            param_values[: self.num_templates], param_values[self.num_templates :]
+        )
+
     def plot_stacked_on(self, ax, **kwargs):
 
         bin_mids = [template.bin_mids for template in self.templates.values()]
