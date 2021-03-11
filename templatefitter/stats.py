@@ -6,6 +6,13 @@ __all__ = ["pearson_chi2_test", "cowan_binned_likelihood_gof"]
 
 
 # -- goodness of fit statistics --
+#
+
+
+def default_chi2_test(data, expectation, uncertainty, dof):
+    chi_sq = np.sum((data - expectation) ** 2 / uncertainty ** 2)
+    pval = quad(chi2.pdf, chi_sq, np.inf, args=(dof,))[0]
+    return chi_sq, chi_sq / dof, pval
 
 
 def pearson_chi2_test(data, expectation, dof):
