@@ -15,7 +15,6 @@ __all__ = ["MultiChannelTemplate", "NegLogLikelihood"]
 
 
 class MultiChannelTemplate:
-
     def __init__(self):
         self._channel_dict = OrderedDict()
         self._processes = tuple()
@@ -188,7 +187,7 @@ class MultiChannelTemplate:
 
         """
         if process_id not in self.processes:
-            raise RuntimeError(f"Process '{process}' not defined!")
+            raise RuntimeError(f"Process '{process_id}' not defined!")
 
         for channel in self.channels.values():
             try:
