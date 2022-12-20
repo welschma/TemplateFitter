@@ -40,12 +40,13 @@ class TemplateFitter:
         self._minimizer_id = minimizer_id
         self._fixed_parameters = list()
         self._bound_parameters = dict()
+        self._fix_nui_params= False
 
     def fix_nui_params(self):
-        pass
+        self._fix_nui_params= True
 
     def do_fit(
-        self, update_templates=True, get_hesse=True, verbose=1, fix_nui_params=False
+        self, update_templates=True, get_hesse=True, verbose=1, fix_nui_params=False, nui_param_limits=None
     ):
         """Performs maximum likelihood fit by minimizing the
         provided negative log likelihoood function.
@@ -73,6 +74,7 @@ class TemplateFitter:
             A namedtuple with the most important information about the
             minimization.
         """
+        self._nll = self._templates.create_nll()
         minimizer = minimizer_factory(
             self._minimizer_id, self._nll, self._nll.param_names
         )
@@ -83,6 +85,14 @@ class TemplateFitter:
                 self._templates.num_nui_params + self._templates.num_processes,
             ):
                 minimizer.set_param_fixed(i)
+        
+        if nui_param_limits is not None:
+            for i in range(
+                self._templates.num_processes,
+                self._templates.num_nui_params + self._templates.num_processes,
+            ):
+                minimizer.set_param_bounds(i, nui_param_limits)
+
 
         for param_id in self._fixed_parameters:
             minimizer.set_param_fixed(param_id)

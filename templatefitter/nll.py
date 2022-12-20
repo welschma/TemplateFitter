@@ -157,10 +157,9 @@ class StackedTemplateNegLogLikelihood(AbstractTemplateCostFunction):
 
         return poisson_term + gauss_term
 
-
 def xlogyx(x, y):
     """Compute :math:`x*log(y/x)`to a good precision when :math:`y~x`.
     The xlogyx function is taken from https://github.com/scikit-hep/probfit/blob/master/probfit/_libstat.pyx.
     """
     result = np.where(x < y, x*np.log1p((y-x)/x), -x*np.log1p((x-y)/y))
-    return np.nan_to_num(result)
+    return np.nan_to_num(result, nan=np.inf)

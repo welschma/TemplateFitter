@@ -206,7 +206,7 @@ class Channel:
             param_values[: self.num_templates], param_values[self.num_templates :]
         )
 
-    def plot_stacked_on(self, ax, **kwargs):
+    def plot_stacked_on(self, ax,  **kwargs):
 
         if self._dim > 1:
             raise NotImplementedError(
@@ -255,7 +255,7 @@ class Channel:
             hatch="///////",
             fill=False,
             lw=0,
-            label="MC Uncertainty",
+            label="Uncertainty",
         )
 
         if self._hdata is None:
@@ -277,7 +277,7 @@ class Channel:
                 label="Data",
             )
 
-    def plot_post_fit_stacked_on(self, ax, result_params, **kwargs):
+    def plot_post_fit_stacked_on(self, ax, result_params, post_fit_uncertainties="propagate", **kwargs):
         if self._dim > 1:
             raise NotImplementedError(
                 "Plotting for hihger dimensions is not implemented yet"
@@ -308,20 +308,28 @@ class Channel:
             stacked=True,
         )
 
-        post_fit_cov = self.propagate_parameter_uncertainties(result_params)
-        total_uncertainty = np.sqrt(np.diag(post_fit_cov))
-        total_bin_count = np.sum(np.array(bin_counts), axis=0)
+        if post_fit_uncertainties == "propagate":
+            post_fit_cov = self.propagate_parameter_uncertainties(result_params)
+            post_fit_errors = np.sqrt(np.diag(post_fit_cov))
+        elif post_fit_uncertainties == "scale":
+            n_templates = len(self.templates)
+            nui_param_errors = result_params.errors[n_templates:].reshape((n_templates,-1))
+            pre_fit_errors = np.vstack([template.errors for template in self.templates.values()])
+            post_fit_errors = np.sqrt(np.sum((nui_param_errors*pre_fit_errors)**2, axis=0))
 
+
+        total_bin_count = np.sum(np.array(bin_counts), axis=0)
+        
         ax.bar(
             x=bin_mids[0],
-            height=2 * total_uncertainty,
+            height=2 * post_fit_errors,
             width=bin_width,
-            bottom=total_bin_count - total_uncertainty,
+            bottom=total_bin_count - post_fit_errors,
             color="black",
             hatch="///////",
             fill=False,
             lw=0,
-            label="MC Uncertainty",
+            label="Uncertainty",
         )
 
         if self._hdata is None:
